@@ -131,7 +131,7 @@ npm run dev                  # http://localhost:3000
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | ✅ | Firebase web config |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | แนะนำ | จำเป็นสำหรับ Google Sign-in |
 | `NEXT_PUBLIC_FIREBASE_APP_ID`, `..._STORAGE_BUCKET`, `..._MESSAGING_SENDER_ID`, `..._MEASUREMENT_ID` | แนะนำ | Firebase web config ส่วนที่เหลือ |
-| `NEXT_PUBLIC_APP_URL` | แนะนำ | URL ที่ใช้สร้างลิงก์แชร์ |
+| `NEXT_PUBLIC_APP_URL` | ไม่บังคับ | URL ที่ใช้สร้างลิงก์แชร์ ถ้าไม่ตั้งจะใช้โดเมนที่ผู้ใช้เปิดอยู่ |
 
 ค่า `NEXT_PUBLIC_*` ถูกฝังลงใน JavaScript ตอน build ถ้าไม่ได้ตั้ง `API_KEY` และ `PROJECT_ID` การ build จะยังผ่าน แต่จะขึ้น warning ว่า **build นี้ deploy ไม่ได้**
 

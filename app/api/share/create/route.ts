@@ -19,7 +19,8 @@ export async function POST(request: Request) {
     rateLimiter,
     // 128 บิตแบบสุ่ม เดาไม่ได้ (ลิงก์ทำหน้าที่เป็นรหัสผ่านในการเข้าถึงบิล)
     generateShareId: () => crypto.randomBytes(16).toString('hex'),
-    appUrl: process.env.NEXT_PUBLIC_APP_URL || 'https://buddypay.vercel.app',
+    // ถ้าไม่ได้ตั้ง NEXT_PUBLIC_APP_URL ให้ใช้โดเมนที่ผู้ใช้เปิดอยู่ (ใช้ได้ทั้ง preview และ production)
+    appUrl: process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin,
     saveShare: async (shareId, data) => {
       await setDoc(doc(db, 'temporary_shared_bills', shareId), data);
     },
