@@ -18,7 +18,6 @@
 - [การทดสอบ](#การทดสอบ)
 - [CI](#ci)
 - [การ Deploy](#การ-deploy)
-- [สถานะฟีเจอร์ AI Chatbot](#สถานะฟีเจอร์-ai-chatbot)
 - [ข้อจำกัดที่ทราบ](#ข้อจำกัดที่ทราบ)
 - [แนวทางพัฒนาต่อ](#แนวทางพัฒนาต่อ)
 
@@ -55,7 +54,6 @@
 ┌───────────────▼──────── Next.js API Routes (Node.js) ───────────┐  │
 │ POST /api/share/create   validate (zod) + rate limit → Firestore ┼──┤
 │ GET  /api/share/[id]     อ่านลิงก์แชร์ + ตรวจวันหมดอายุ            ┼──┤
-│ POST /api/chat           (ปิดอยู่) verify ID token → OpenAI       │  │
 │ /api/errors              ปิดใช้งาน (410)                          │  │
 └─────────────────────────────────────────────────────────────────┘  │
                                                                      ▼
@@ -99,8 +97,6 @@ app/
 ├── lib/
 │   ├── billCalculator.ts   logic คำนวณการหารบิล
 │   ├── share/              schema + handler ของลิงก์แชร์
-│   ├── chat/               handler + feature flag ของ AI Chatbot
-│   ├── server/             Firebase Admin (ใช้เฉพาะฝั่ง server)
 │   ├── firebase.ts         Firebase client SDK
 │   └── rateLimit.ts        rate limiter แบบ in-memory
 ├── share-bill/ bill-history/ bill/[id]/ share/[id]/ statistics/ admin/ ...  หน้าต่าง ๆ
@@ -136,8 +132,6 @@ npm run dev                  # http://localhost:3000
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | แนะนำ | จำเป็นสำหรับ Google Sign-in |
 | `NEXT_PUBLIC_FIREBASE_APP_ID`, `..._STORAGE_BUCKET`, `..._MESSAGING_SENDER_ID`, `..._MEASUREMENT_ID` | แนะนำ | Firebase web config ส่วนที่เหลือ |
 | `NEXT_PUBLIC_APP_URL` | แนะนำ | URL ที่ใช้สร้างลิงก์แชร์ |
-| `FIREBASE_PROJECT_ID` | ไม่บังคับ | ใช้ verify ID token ใน `/api/chat` (ถ้าไม่ตั้งจะใช้ค่า `NEXT_PUBLIC_FIREBASE_PROJECT_ID`) |
-| `ENABLE_AI_CHAT`, `OPENAI_API_KEY`, `OPENAI_MODEL` | ไม่บังคับ | ดู [AI Chatbot](#สถานะฟีเจอร์-ai-chatbot) |
 
 ค่า `NEXT_PUBLIC_*` ถูกฝังลงใน JavaScript ตอน build ถ้าไม่ได้ตั้ง `API_KEY` และ `PROJECT_ID` การ build จะยังผ่าน แต่จะขึ้น warning ว่า **build นี้ deploy ไม่ได้**
 
@@ -156,7 +150,7 @@ npm run dev                  # http://localhost:3000
 
 ## การทดสอบ
 
-- **Unit tests** (`npm test`): การคำนวณบิล, API ลิงก์แชร์ (validation, rate limit, วันหมดอายุ), API แชทบอท (auth, validation, rate limit), การ verify ID token กับ `firebase-admin` จริง และ Next.js config/security headers
+- **Unit tests** (`npm test`): การคำนวณบิล, API ลิงก์แชร์ (validation, rate limit, วันหมดอายุ) และ Next.js config/security headers
 - **Firestore Rules tests** (`npm run test:rules`): รันบน Firestore Emulator ด้วย demo project (`demo-*`) แบบ offline ทั้งหมด **ไม่แตะ Firebase จริง** ครอบคลุมทั้งกรณีที่ต้องอนุญาตและต้องปฏิเสธของ `users` และ `temporary_shared_bills` และมี integration test ที่ส่งข้อมูลจาก API จริงผ่าน Rules
 - **ยังไม่มี:** E2E tests ของ flow ล็อกอินและการบันทึกบิลกับ Firebase จริง
 
@@ -176,27 +170,8 @@ npm run dev                  # http://localhost:3000
 1. ตั้ง environment variables ที่ hosting (เช่น Vercel)
 2. Deploy Security Rules: `firebase deploy --only firestore:rules`
 3. ตั้ง **TTL policy** ใน Firebase Console: Firestore → TTL → collection `temporary_shared_bills` → field `expiresAt` เพื่อลบลิงก์แชร์ที่หมดอายุอัตโนมัติ
-4. ตรวจว่ามี **composite index** สำหรับ query `bills` (`userId` + `createdAt desc`) ตอนนี้ `firestore.indexes.json` ยังว่างอยู่ ถ้ายังไม่มี index Firestore จะแจ้งลิงก์สำหรับสร้างไว้ใน console ของ browser
+4. Deploy **composite indexes** จาก `firestore.indexes.json`: `firebase deploy --only firestore:indexes` (`bills`: `userId` + `createdAt desc` สำหรับประวัติบิลและสถิติ, `status` + `paymentDate desc` สำหรับหน้า Admin)
 5. ทดสอบบน preview: ล็อกอินด้วย Email และ Google, สร้าง/บันทึกบิล, สร้างและเปิดลิงก์แชร์ พร้อมเปิด DevTools ดูว่ามี CSP violation หรือไม่
-
----
-
-## สถานะฟีเจอร์ AI Chatbot
-
-AI Chatbot **ปิดใช้งานชั่วคราว** เพราะยังไม่ได้ตั้งค่า OpenAI API Key ฟีเจอร์หลักทั้งหมดใช้งานได้โดยไม่ต้องใช้แชทบอท
-
-ขณะปิดใช้งาน:
-
-- ไม่มีปุ่มหรือหน้าต่างแชทบอทบนหน้าเว็บ
-- `POST /api/chat` ตอบ `503 Service Unavailable` และไม่เรียก OpenAI
-
-วิธีเปิดใช้งาน (ตั้งค่าที่ฝั่ง server หรือ hosting เท่านั้น ห้าม commit ค่า key):
-
-1. ตั้ง `OPENAI_API_KEY` (ห้ามใช้ prefix `NEXT_PUBLIC_` เพราะจะทำให้ key ถูกส่งไปที่ browser)
-2. ตั้ง `ENABLE_AI_CHAT=true`
-3. build และ deploy ใหม่ เพราะการแสดงปุ่มแชทถูกกำหนดตอน build
-
-เมื่อเปิดใช้งานแล้ว endpoint จะ verify Firebase ID token, จำกัด 10 ข้อความต่อนาทีต่อผู้ใช้ และกำหนด system prompt ฝั่ง server เท่านั้น
 
 ---
 

@@ -10,8 +10,6 @@ import { FirebaseProvider } from './components/providers/FirebaseWrapper';
 import { AuthProvider } from './context/AuthContext';
 import { AuthModalProvider } from './context/AuthModalContext';
 import AppShell from './components/AppShell';
-import ChatbotPopup from './components/ChatbotPopup';
-import { isAiChatEnabled } from './lib/chat/featureFlag';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorMonitoringProvider from './components/providers/ErrorMonitoringProvider';
 import { Open_Sans, Prompt } from 'next/font/google';
@@ -139,15 +137,6 @@ export default function RootLayout({
                 <ErrorMonitoringProvider>
                   <AuthModalProvider>
                     <AppShell>{children}</AppShell>
-                    {/* AI Chatbot ปิดชั่วคราว: แสดงเฉพาะเมื่อ ENABLE_AI_CHAT=true (ประเมินตอน build)
-                        อยู่ภายใต้ AuthProvider เพื่อใช้ ID token ของผู้ใช้เรียก /api/chat */}
-                    {isAiChatEnabled() && (
-                      <ChatbotPopup
-                        position="bottom-right"
-                        botName="BuddyPay Helper"
-                        primaryColor="bg-blue-600"
-                      />
-                    )}
                   </AuthModalProvider>
                 </ErrorMonitoringProvider>
               </AuthProvider>

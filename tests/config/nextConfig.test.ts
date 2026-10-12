@@ -39,7 +39,7 @@ describe('Next.js configuration', () => {
     expect(headers['Content-Security-Policy']).not.toContain('openai.com');
   });
 
-  it('ไม่ expose ตัวแปร OpenAI ไปฝั่ง client ผ่าน config.env', () => {
+  it('ไม่มีตัวแปร OpenAI ใน config.env', () => {
     const envKeys = Object.keys(nextConfig.env ?? {});
     expect(envKeys.filter((key) => key.includes('OPENAI'))).toEqual([]);
   });
