@@ -48,9 +48,52 @@ service cloud.firestore {
     }
     
     // Users collection
+    //
+    // ฟิลด์ที่มีผลต่อสิทธิ์ (role, status) ต้องแก้ได้โดย admin เท่านั้น
+    // เจ้าของบัญชีสร้างเอกสารของตัวเองได้ด้วย role 'user' เท่านั้น
+    // และแก้ได้เฉพาะข้อมูลโปรไฟล์ที่อยู่ใน allowlist
     match /users/{userId} {
-      // ผู้ใช้สามารถอ่านและแก้ไขข้อมูลของตัวเองเท่านั้น หรือ admin
-      allow read, write: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      // ฟิลด์ที่เจ้าของบัญชีกำหนดได้ตอนสร้างเอกสาร
+      function ownerCreatableKeys() {
+        return ['uid', 'email', 'displayName', 'photoURL', 'role', 'status',
+                'createdAt', 'updatedAt', 'lastLogin'];
+      }
+
+      // ฟิลด์ที่เจ้าของบัญชีแก้ไขได้ภายหลัง (ไม่มี role, status, uid, createdAt)
+      function ownerUpdatableKeys() {
+        return ['displayName', 'photoURL', 'updatedAt', 'lastLogin', 'email'];
+      }
+
+      // email ใน Firestore ต้องตรงกับ email ที่ Firebase Auth ยืนยันไว้ใน ID token
+      // ผู้ใช้จึงเปลี่ยน email ได้ผ่าน Firebase Auth เท่านั้น แล้วค่อย sync มาที่นี่
+      function emailMatchesToken(data) {
+        return !('email' in data) ||
+          (request.auth.token.email != null && data.email == request.auth.token.email);
+      }
+
+      function isValidOwnerCreate() {
+        let data = request.resource.data;
+        return isOwner(userId) &&
+          data.keys().hasOnly(ownerCreatableKeys()) &&
+          data.get('role', 'user') == 'user' &&
+          data.get('status', 'active') == 'active' &&
+          data.get('uid', userId) == userId &&
+          emailMatchesToken(data);
+      }
+
+      function isValidOwnerUpdate() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        return isOwner(userId) &&
+          changed.hasOnly(ownerUpdatableKeys()) &&
+          (!changed.hasAny(['email']) ||
+            ('email' in request.resource.data && emailMatchesToken(request.resource.data)));
+      }
+
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && (isValidOwnerCreate() || isAdmin());
+      allow update: if isAuthenticated() && (isValidOwnerUpdate() || isAdmin());
+      // เจ้าของลบเอกสารตัวเองได้ (ใช้ในหน้าลบบัญชี app/settings/page.tsx)
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
     
     // Categories collection (public read, admin write)

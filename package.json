@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-buddypay-rules \"vitest run --config vitest.rules.config.ts\""
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
@@ -55,6 +58,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/express": "^5.0.1",
     "@types/node": "^20.17.30",
@@ -64,9 +68,11 @@
     "critters": "^0.0.23",
     "eslint": "^9",
     "eslint-config-next": "15.2.4",
+    "firebase-tools": "^15.33.0",
     "tailwindcss": "^4",
     "terser-webpack-plugin": "^5.3.14",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^3.2.7"
   }
 }
