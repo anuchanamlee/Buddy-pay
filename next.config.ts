@@ -3,6 +3,19 @@ import TerserPlugin from "terser-webpack-plugin";
 
 // Next.js โหลด config เพียงไฟล์เดียว (ลำดับ: next.config.js → .mjs → .ts)
 // โปรเจกต์นี้ใช้ไฟล์นี้ไฟล์เดียว ห้ามเพิ่ม next.config.js/.mjs เพราะจะทำให้ไฟล์นี้ถูกละเลย
+
+// ค่า NEXT_PUBLIC_* ถูกฝังลงใน bundle ตอน build ถ้าไม่ครบ build จะผ่านได้
+// แต่แอปจะใช้งาน Firebase ใน browser ไม่ได้ จึงเตือนให้เห็นชัดเจน
+// (ต้องตรงกับ REQUIRED_CONFIG ใน app/lib/firebase.ts)
+const REQUIRED_PUBLIC_ENV = ["NEXT_PUBLIC_FIREBASE_API_KEY", "NEXT_PUBLIC_FIREBASE_PROJECT_ID"];
+const missingPublicEnv = REQUIRED_PUBLIC_ENV.filter((name) => !process.env[name]);
+if (missingPublicEnv.length > 0) {
+  console.warn(
+    `\n⚠️  Missing Firebase config: ${missingPublicEnv.join(", ")}\n` +
+      "   This build is NOT deployable: the app will fail in the browser until these are set.\n"
+  );
+}
+
 const nextConfig: NextConfig = {
   images: {
     formats: ['image/avif', 'image/webp'],
