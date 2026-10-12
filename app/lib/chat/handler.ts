@@ -6,7 +6,7 @@ import type { RateLimiter } from './rateLimit';
  * Firebase หรือ OpenAI จริง (ส่ง dependency ปลอมเข้ามาใน test แทน)
  */
 export type ChatDependencies = {
-  // true เมื่อ server มี OPENAI_API_KEY (ไม่ส่งค่า key เข้ามาใน handler)
+  // true เมื่อเปิด ENABLE_AI_CHAT และ server มี OPENAI_API_KEY (ไม่ส่งค่า key เข้ามาใน handler)
   isEnabled: boolean;
   verifyIdToken: (idToken: string) => Promise<{ uid: string }>;
   createReply: (messages: ChatMessage[]) => Promise<string>;
@@ -29,7 +29,7 @@ function getBearerToken(request: Request): string | null {
 }
 
 export async function handleChatRequest(request: Request, deps: ChatDependencies): Promise<Response> {
-  // 1) ปิดแชทบอทเมื่อ server ไม่มี API key แทนที่จะพังหรือรั่ว key
+  // 1) ปิดแชทบอทเมื่อ flag ปิดหรือ server ไม่มี API key แทนที่จะพังหรือรั่ว key
   if (!deps.isEnabled) {
     return json({ error: 'chatbot_disabled', message: 'แชทบอทยังไม่เปิดใช้งาน' }, 503);
   }

@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { handleChatRequest } from '@/app/lib/chat/handler';
+import { isAiChatEnabled } from '@/app/lib/chat/featureFlag';
 import { createRateLimiter } from '@/app/lib/chat/rateLimit';
 import { CHAT_SYSTEM_PROMPT } from '@/app/lib/chat/systemPrompt';
 import { verifyFirebaseIdToken } from '@/app/lib/server/firebaseAdmin';
@@ -25,7 +26,8 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
 
   return handleChatRequest(request, {
-    isEnabled: Boolean(apiKey),
+    // ต้องเปิด flag และมี key ครบทั้งคู่ ถ้าไม่ครบตอบ 503 โดยไม่ตรวจ token และไม่เรียก OpenAI
+    isEnabled: isAiChatEnabled() && Boolean(apiKey),
     verifyIdToken: verifyFirebaseIdToken,
     rateLimiter,
     createReply: async (messages) => {
