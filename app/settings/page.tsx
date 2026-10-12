@@ -150,9 +150,9 @@ export default function SettingsPage() {
     );
   }
 
-  // ถ้าไม่ได้ล็อกอิน ให้นำทางไปยังหน้าหลัก
+  // ถ้าไม่ได้ล็อกอิน ให้กลับหน้าแรกพร้อมเปิด modal ล็อกอิน แล้วพากลับมาหน้านี้หลังล็อกอิน
   if (!isAuthenticated) {
-    router.push('/');
+    router.replace('/?login=1&from=/settings');
     return null;
   }
 

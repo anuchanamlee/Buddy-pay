@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatTHB } from '@/app/lib/format';
 import { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { BillState } from '../../lib/billTypes';
 import { User, ChevronDown, ChevronUp, Utensils, CreditCard, FileText, DollarSign, AlertCircle, Calendar, Users, Share2, Copy, Check, UserPlus, Save } from 'lucide-react';
@@ -276,7 +277,7 @@ export default function ResultStep({
                 <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="text-xs opacity-80">ยอดรวม</div>
-              <div className="text-lg sm:text-xl font-bold mt-1">{Math.round(state.totalAmount)} ฿</div>
+              <div className="text-lg sm:text-xl font-bold mt-1">{formatTHB(state.totalAmount)} ฿</div>
             </div>
           </div>
         </div>
@@ -330,7 +331,7 @@ export default function ResultStep({
                       <div className="flex items-center flex-shrink-0">
                         <div className="text-right mr-2 sm:mr-3">
                           <div className="text-lg sm:text-xl font-bold text-blue-600">
-                            {Math.round(result.amount)} ฿
+                            {formatTHB(result.amount)} ฿
                           </div>
                           <div className="text-xs text-gray-500">
                             ต้องจ่าย
@@ -364,7 +365,7 @@ export default function ResultStep({
                                 )}
                               </div>
                               <span className="font-medium text-gray-700">
-                                {Math.round(item.price)} ฿
+                                {formatTHB(item.price)} ฿
                               </span>
                             </div>
                           ))}
@@ -375,27 +376,27 @@ export default function ResultStep({
                       <div className="border-t border-gray-200 pt-3 space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span className="text-gray-600">ค่าอาหาร</span>
-                          <span className="text-gray-800">{Math.round(details.subtotal)} ฿</span>
+                          <span className="text-gray-800">{formatTHB(details.subtotal)} ฿</span>
                         </div>
                         
                         {details.vatShare > 0 && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">VAT ({state.vat}%)</span>
-                            <span className="text-gray-800">{Math.round(details.vatShare)} ฿</span>
+                            <span className="text-gray-800">{formatTHB(details.vatShare)} ฿</span>
                           </div>
                         )}
                         
                         {details.serviceShare > 0 && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">ค่าบริการ ({state.serviceCharge}%)</span>
-                            <span className="text-gray-800">{Math.round(details.serviceShare)} ฿</span>
+                            <span className="text-gray-800">{formatTHB(details.serviceShare)} ฿</span>
                           </div>
                         )}
                         
                         {details.discountShare > 0 && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">ส่วนลด</span>
-                            <span className="text-red-600">-{Math.round(details.discountShare)} ฿</span>
+                            <span className="text-red-600">-{formatTHB(details.discountShare)} ฿</span>
                           </div>
                         )}
                       </div>
@@ -404,7 +405,7 @@ export default function ResultStep({
                       <div className="border-t border-gray-300 pt-3 mt-3">
                         <div className="flex justify-between items-center">
                           <span className="font-semibold text-gray-800">รวมทั้งสิ้น</span>
-                          <span className="text-xl font-bold text-blue-600">{Math.round(details.total)} ฿</span>
+                          <span className="text-xl font-bold text-blue-600">{formatTHB(details.total)} ฿</span>
                         </div>
                       </div>
                     </div>
@@ -442,14 +443,14 @@ export default function ResultStep({
                       <div className="hidden sm:block col-span-7 font-medium text-gray-800">{item.name}</div>
                       <div className="hidden sm:block col-span-2 text-center text-gray-600">1 จาน</div>
                       <div className="hidden sm:block col-span-3 text-right font-semibold text-gray-800">
-                        {Math.round(item.price)}
+                        {formatTHB(item.price)}
                       </div>
                       
                       {/* Mobile layout */}
                       <div className="sm:hidden flex justify-between items-center">
                         <div className="font-medium text-gray-800 flex-1">{item.name}</div>
                         <div className="font-semibold text-gray-800 ml-2">
-                          {Math.round(item.price)} ฿
+                          {formatTHB(item.price)} ฿
                         </div>
                       </div>
                     </div>
@@ -468,14 +469,14 @@ export default function ResultStep({
                     {/* Desktop layout */}
                     <div className="hidden sm:block col-span-9 text-gray-600 text-sm">ภาษีมูลค่าเพิ่ม {state.vat}%</div>
                     <div className="hidden sm:block col-span-3 text-right font-medium text-gray-700">
-                      {Math.round(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.vat / 100)}
+                      {formatTHB(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.vat / 100)}
                     </div>
                     
                     {/* Mobile layout */}
                     <div className="sm:hidden flex justify-between items-center">
                       <div className="text-gray-600 text-sm">ภาษีมูลค่าเพิ่ม {state.vat}%</div>
                       <div className="font-medium text-gray-700">
-                        {Math.round(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.vat / 100)} ฿
+                        {formatTHB(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.vat / 100)} ฿
                       </div>
                     </div>
                   </div>
@@ -486,14 +487,14 @@ export default function ResultStep({
                     {/* Desktop layout */}
                     <div className="hidden sm:block col-span-9 text-gray-600 text-sm">ค่าบริการ {state.serviceCharge}%</div>
                     <div className="hidden sm:block col-span-3 text-right font-medium text-gray-700">
-                      {Math.round(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.serviceCharge / 100)}
+                      {formatTHB(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.serviceCharge / 100)}
                     </div>
                     
                     {/* Mobile layout */}
                     <div className="sm:hidden flex justify-between items-center">
                       <div className="text-gray-600 text-sm">ค่าบริการ {state.serviceCharge}%</div>
                       <div className="font-medium text-gray-700">
-                        {Math.round(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.serviceCharge / 100)} ฿
+                        {formatTHB(state.foodItems.reduce((sum, item) => sum + item.price, 0) * state.serviceCharge / 100)} ฿
                       </div>
                     </div>
                   </div>
@@ -504,14 +505,14 @@ export default function ResultStep({
                     {/* Desktop layout */}
                     <div className="hidden sm:block col-span-9 text-gray-600 text-sm">ส่วนลด</div>
                     <div className="hidden sm:block col-span-3 text-right font-medium text-red-600">
-                      -{Math.round(state.discount)}
+                      -{formatTHB(state.discount)}
                     </div>
                     
                     {/* Mobile layout */}
                     <div className="sm:hidden flex justify-between items-center">
                       <div className="text-gray-600 text-sm">ส่วนลด</div>
                       <div className="font-medium text-red-600">
-                        -{Math.round(state.discount)} ฿
+                        -{formatTHB(state.discount)} ฿
                       </div>
                     </div>
                   </div>
@@ -522,14 +523,14 @@ export default function ResultStep({
                   {/* Desktop layout */}
                   <div className="hidden sm:block col-span-9 font-semibold text-blue-800">ยอดรวมทั้งสิ้น</div>
                   <div className="hidden sm:block col-span-3 text-right font-bold text-blue-800 text-lg">
-                    {Math.round(state.totalAmount)}
+                    {formatTHB(state.totalAmount)}
                   </div>
                   
                   {/* Mobile layout */}
                   <div className="sm:hidden flex justify-between items-center">
                     <div className="font-semibold text-blue-800">ยอดรวมทั้งสิ้น</div>
                     <div className="font-bold text-blue-800 text-lg">
-                      {Math.round(state.totalAmount)} ฿
+                      {formatTHB(state.totalAmount)} ฿
                     </div>
                   </div>
                 </div>
@@ -640,19 +641,20 @@ export default function ResultStep({
                       <div className="bg-green-100 rounded-full p-2 mr-3">
                         <Check className="w-5 h-5 text-green-600" />
                       </div>
-                      <span className="text-green-700 font-medium">✅ ลิงค์แชร์พร้อมใช้งาน!</span>
+                      <span className="text-green-700 font-medium">ลิงก์แชร์พร้อมใช้งาน</span>
                     </div>
                     
-                    <div className="flex gap-3 mb-3">
+                    <div className="flex flex-col sm:flex-row gap-3 mb-3">
                       <input
                         type="text"
                         value={shareUrl}
                         readOnly
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:outline-none"
+                        aria-label="ลิงก์แชร์บิล"
+                        className="min-w-0 w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:outline-none"
                       />
                       <button
                         onClick={handleCopyLink}
-                        className={`px-6 py-2 rounded-lg flex items-center transition-all duration-200 font-medium ${
+                        className={`shrink-0 whitespace-nowrap justify-center px-6 py-2 rounded-lg flex items-center transition-all duration-200 font-medium ${
                           copied 
                             ? 'bg-green-600 text-white' 
                             : 'bg-indigo-600 text-white hover:bg-indigo-700'
@@ -666,10 +668,18 @@ export default function ResultStep({
                         ) : (
                           <>
                             <Copy className="w-4 h-4 mr-2" />
-                            คัดลอกลิงค์
+                            คัดลอกลิงก์
                           </>
                         )}
                       </button>
+                      <a
+                        href={`https://line.me/R/share?text=${encodeURIComponent(`หารบิล ${state.billName}: ดูยอดที่ต้องจ่ายได้ที่ ${shareUrl}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 whitespace-nowrap justify-center px-6 py-2 rounded-lg flex items-center font-medium bg-[#06C755] text-white hover:opacity-90"
+                      >
+                        ส่งเข้า LINE
+                      </a>
                     </div>
                     
                                          <div className="text-xs text-gray-500 bg-yellow-50 p-3 rounded-lg border border-yellow-200">

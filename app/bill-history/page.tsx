@@ -1,5 +1,6 @@
 'use client';
 
+import { formatThaiDate } from '@/app/lib/format';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import LoginPrompt from '../components/LoginPrompt';
@@ -361,70 +362,8 @@ export default function BillHistory() {
     return allPaid ? 'paid' : 'pending';
   };
   
-  // ฟังก์ชันแปลงวันที่
-  const formatDate = (dateInput: string | Date | any) => {
-    if (!dateInput) return 'ไม่ระบุวันที่';
-    
-    // ตรวจสอบว่าเป็น object ว่างหรือไม่
-    if (typeof dateInput === 'object') {
-      if (Object.keys(dateInput).length === 0) {
-        return 'ไม่ระบุวันที่';
-      }
-      
-      // ตรวจสอบว่าเป็น Firestore timestamp หรือไม่
-      if (dateInput.seconds !== undefined && dateInput.nanoseconds !== undefined) {
-        // แปลง Firestore timestamp เป็น Date object
-        const date = new Date(dateInput.seconds * 1000);
-        return new Intl.DateTimeFormat('th-TH', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(date);
-      }
-      
-      // ถ้าเป็น Date object
-      if (dateInput instanceof Date) {
-        if (isNaN(dateInput.getTime())) {
-          console.error('Invalid Date object:', dateInput);
-          return 'ไม่ระบุวันที่';
-        }
-        return new Intl.DateTimeFormat('th-TH', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(dateInput);
-      }
-    }
-    
-    // ถ้าเป็น string
-    if (typeof dateInput === 'string') {
-      try {
-        const date = new Date(dateInput);
-        if (isNaN(date.getTime())) {
-          console.error('Invalid date string:', dateInput);
-          return 'ไม่ระบุวันที่';
-        }
-        return new Intl.DateTimeFormat('th-TH', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(date);
-      } catch (error) {
-        console.error('Error parsing date string:', error);
-        return 'ไม่ระบุวันที่';
-      }
-    }
-    
-    // กรณีอื่นๆ ที่ไม่สามารถแปลงได้
-    console.error('Unhandled date format:', dateInput, typeof dateInput);
-    return 'ไม่ระบุวันที่';
-  };
+  // ฟังก์ชันแปลงวันที่ (รองรับ Date, Firestore Timestamp และค่าจากแคช)
+  const formatDate = (dateInput: Parameters<typeof formatThaiDate>[0]) => formatThaiDate(dateInput);
   
   // ฟังก์ชันลบบิล
   const deleteBill = async (billId: string, billName: string) => {
@@ -515,7 +454,7 @@ export default function BillHistory() {
               >
                 <CardHeader className="pb-3 p-4 sm:p-6">
                   <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-base sm:text-lg flex-1 truncate pr-2">{bill.name}</CardTitle>
+                    <CardTitle className="text-base sm:text-lg flex-1 truncate pr-2">{bill.name || bill.title || 'บิลไม่มีชื่อ'}</CardTitle>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {bill.categoryId && (
                         <CategoryIcon categoryId={bill.categoryId} size={20} />
@@ -524,7 +463,7 @@ export default function BillHistory() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteBill(bill.id, bill.name);
+                            deleteBill(bill.id, bill.name || bill.title || 'บิลไม่มีชื่อ');
                           }}
                           className={`p-1 rounded transition-colors ${
                             deletingBillId === bill.id 

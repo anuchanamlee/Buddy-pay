@@ -82,7 +82,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         
         {leftIcon && <span className={cn("mr-2", { "opacity-0": isLoading })}>{leftIcon}</span>}
-        <span className={cn({ "opacity-0": isLoading })}>
+        <span className={cn("inline-flex items-center justify-center gap-2", { "opacity-0": isLoading })}>
           {isLoading && loadingText ? loadingText : children}
         </span>
         {rightIcon && <span className={cn("ml-2", { "opacity-0": isLoading })}>{rightIcon}</span>}

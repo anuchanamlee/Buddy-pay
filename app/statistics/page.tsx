@@ -73,7 +73,7 @@ export default function StatisticsPage() {
 
             {/* 2) ค่าใช้จ่ายตามหมวด */}
             <section className="mt-10">
-              <h2 className="text-xl font-semibold mb-3">ค่าใช้จ่ายตามหมวดหมู่</h2>
+              <h2 className="text-xl font-semibold mb-3">ค่าใช้จ่ายรายเดือนและตามหมวดหมู่</h2>
               <StatisticsCharts stats={stats} categoryStats={categoryStats} />
             </section>
 
@@ -146,7 +146,7 @@ export default function StatisticsPage() {
 
       {/* 2) ค่าใช้จ่ายตามหมวด */}
       <section className="mt-10">
-        <h2 className="text-xl font-semibold mb-3">ค่าใช้จ่ายตามหมวดหมู่</h2>
+        <h2 className="text-xl font-semibold mb-3">ค่าใช้จ่ายรายเดือนและตามหมวดหมู่</h2>
         <StatisticsCharts stats={stats} categoryStats={categoryStats} />
       </section>
 
