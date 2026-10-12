@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
+import TerserPlugin from "terser-webpack-plugin";
 
+// Next.js โหลด config เพียงไฟล์เดียว (ลำดับ: next.config.js → .mjs → .ts)
+// โปรเจกต์นี้ใช้ไฟล์นี้ไฟล์เดียว ห้ามเพิ่ม next.config.js/.mjs เพราะจะทำให้ไฟล์นี้ถูกละเลย
 const nextConfig: NextConfig = {
-  /* config options here */
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
@@ -35,7 +37,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.firebaseapp.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com; img-src 'self' data: https://*.firebasestorage.googleapis.com https://*.googleusercontent.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.firebaseapp.com; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com; img-src 'self' data: https://firebasestorage.googleapis.com https://*.googleusercontent.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com;",
           },
           {
             key: 'X-XSS-Protection',
@@ -69,6 +71,24 @@ const nextConfig: NextConfig = {
     optimizeCss: true,
     optimizeServerReact: true,
     scrollRestoration: true,
+    optimizePackageImports: ['lucide-react'],
+  },
+  // ย้ายมาจาก next.config.js เดิม: ลบ console.* ออกจาก client bundle ตอน production build
+  // (ไม่กระทบ server เพื่อให้ log ของ API routes ยังทำงาน)
+  webpack: (config, { dev, isServer }) => {
+    if (!dev && !isServer) {
+      config.optimization.minimizer.push(
+        new TerserPlugin({
+          terserOptions: {
+            compress: {
+              drop_console: true,
+              drop_debugger: true,
+            },
+          },
+        })
+      );
+    }
+    return config;
   },
 };
 

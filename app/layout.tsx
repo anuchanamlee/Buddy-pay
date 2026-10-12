@@ -97,11 +97,6 @@ export default function RootLayout({
           href="https://firebaseapp.com"
           crossOrigin="anonymous"
         />
-        {/* ปรับปรุง Content Security Policy */}
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://*.firebaseapp.com;"
-        />
         {/* ใช้ style tag แบบ inline ดีกว่าสำหรับ critical CSS */}
         <style dangerouslySetInnerHTML={{ __html: `
           /* Critical CSS for LCP */
