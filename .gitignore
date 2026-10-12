@@ -58,3 +58,8 @@ next-env.d.ts
 
 # local env files
 .env*.local
+
+# firebase emulator logs
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*

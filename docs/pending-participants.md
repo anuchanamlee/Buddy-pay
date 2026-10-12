@@ -1,0 +1,38 @@
+# การหาผู้ค้างชำระ (Pending Participants)
+
+เอกสารนี้อธิบายว่า BuddyPay หาว่า "ใครยังไม่จ่าย และค้างเท่าไร" อย่างไร โดยอ้างอิงจากโค้ดปัจจุบัน
+
+## ข้อมูลที่ใช้
+
+แต่ละบิลใน collection `bills` มีฟิลด์ที่เกี่ยวข้องดังนี้
+
+- `participants` คือรายชื่อผู้ร่วมจ่าย แต่ละคนมี `status` เป็น `pending` (ยังไม่จ่าย) หรือ `paid`
+- `splitResults` คือผลการหารบิล แต่ละรายการมี `participant` (ข้อมูลผู้ร่วมจ่าย) และ `amount` (ยอดที่คนนั้นต้องจ่าย)
+
+## 1. หน้าสถิติ: รวมยอดค้างจากหลายบิล
+
+ฟังก์ชัน `calculatePendingParticipants(bills)` ใน `app/hooks/useStatistics.ts` ทำงานดังนี้
+
+1. วนทุกบิลที่มี `splitResults`
+2. เลือกเฉพาะรายการที่ `participant.status === 'pending'`
+3. แปลง `amount` เป็นตัวเลขด้วย `Number()` ถ้าไม่ใช่ตัวเลขจะใช้ 0
+4. รวมยอดโดยใช้ **`participant.id` เป็น key** และเก็บรายการบิลที่คนนั้นค้างไว้ด้วย
+5. เรียงผลลัพธ์ตามยอดค้างจากมากไปน้อย
+
+ผลลัพธ์แสดงที่ `app/components/statistics/PendingParticipants.tsx` และจัดรูปแบบเงินบาทด้วย `formatCurrency` จาก `app/utils/statistics.ts`
+
+> **ข้อควรรู้:** ระบบรวมยอดตาม `id` ไม่ใช่ตามชื่อ ถ้าแต่ละบิลสร้าง `id` ของผู้ร่วมจ่ายใหม่ คนชื่อเดียวกันในต่างบิลจะแสดงแยกเป็นคนละรายการ
+
+## 2. Navbar: แจ้งเตือนบิลที่ยังมีคนค้างจ่าย
+
+Hook `usePendingBills` ใน `app/components/Navbar.tsx` ทำงานดังนี้
+
+- ใช้ `onSnapshot` ติดตามบิลของผู้ใช้ (`userId == uid`) ล่าสุด 100 ใบ แบบ real-time
+- นับเฉพาะบิลที่ใน `participants` มีคนสถานะ `pending`
+- รวมยอดค้างจากฟิลด์ `participants[].amount`
+
+ดังนั้นการแจ้งเตือนนี้มีไว้ให้ **เจ้าของบิล** รู้ว่าบิลไหนยังเก็บเงินไม่ครบ ไม่ใช่การแจ้งเตือนถึงคนที่ค้างจ่าย
+
+## 3. ฟังก์ชันสำหรับบิลเดียว
+
+`app/utils/statistics.ts` มีฟังก์ชันอีกชุด ได้แก่ `getPendingParticipantsFromSplitResults`, `calculateTotalPendingAmount` และ `formatPendingParticipantsText` ซึ่งกรองเฉพาะคนที่ยอดมากกว่า 0 แต่ **ตอนนี้ยังไม่มีหน้าไหนเรียกใช้**

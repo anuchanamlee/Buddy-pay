@@ -48,9 +48,52 @@ service cloud.firestore {
     }
     
     // Users collection
+    //
+    // ฟิลด์ที่มีผลต่อสิทธิ์ (role, status) ต้องแก้ได้โดย admin เท่านั้น
+    // เจ้าของบัญชีสร้างเอกสารของตัวเองได้ด้วย role 'user' เท่านั้น
+    // และแก้ได้เฉพาะข้อมูลโปรไฟล์ที่อยู่ใน allowlist
     match /users/{userId} {
-      // ผู้ใช้สามารถอ่านและแก้ไขข้อมูลของตัวเองเท่านั้น หรือ admin
-      allow read, write: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      // ฟิลด์ที่เจ้าของบัญชีกำหนดได้ตอนสร้างเอกสาร
+      function ownerCreatableKeys() {
+        return ['uid', 'email', 'displayName', 'photoURL', 'role', 'status',
+                'createdAt', 'updatedAt', 'lastLogin'];
+      }
+
+      // ฟิลด์ที่เจ้าของบัญชีแก้ไขได้ภายหลัง (ไม่มี role, status, uid, createdAt)
+      function ownerUpdatableKeys() {
+        return ['displayName', 'photoURL', 'updatedAt', 'lastLogin', 'email'];
+      }
+
+      // email ใน Firestore ต้องตรงกับ email ที่ Firebase Auth ยืนยันไว้ใน ID token
+      // ผู้ใช้จึงเปลี่ยน email ได้ผ่าน Firebase Auth เท่านั้น แล้วค่อย sync มาที่นี่
+      function emailMatchesToken(data) {
+        return !('email' in data) ||
+          (request.auth.token.email != null && data.email == request.auth.token.email);
+      }
+
+      function isValidOwnerCreate() {
+        let data = request.resource.data;
+        return isOwner(userId) &&
+          data.keys().hasOnly(ownerCreatableKeys()) &&
+          data.get('role', 'user') == 'user' &&
+          data.get('status', 'active') == 'active' &&
+          data.get('uid', userId) == userId &&
+          emailMatchesToken(data);
+      }
+
+      function isValidOwnerUpdate() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        return isOwner(userId) &&
+          changed.hasOnly(ownerUpdatableKeys()) &&
+          (!changed.hasAny(['email']) ||
+            ('email' in request.resource.data && emailMatchesToken(request.resource.data)));
+      }
+
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && (isValidOwnerCreate() || isAdmin());
+      allow update: if isAuthenticated() && (isValidOwnerUpdate() || isAdmin());
+      // เจ้าของลบเอกสารตัวเองได้ (ใช้ในหน้าลบบัญชี app/settings/page.tsx)
+      allow delete: if isAuthenticated() && (isOwner(userId) || isAdmin());
     }
     
     // Categories collection (public read, admin write)
@@ -104,14 +147,51 @@ service cloud.firestore {
     }
     
     // Temporary shared bills collection (สำหรับลิงค์แชร์ชั่วคราว)
+    //
+    // /api/share/create เขียนด้วย Firebase client SDK แบบไม่ล็อกอิน จึงต้องอนุญาต create
+    // สำหรับทุกคน Rules ด้านล่างจึงตรวจโครงสร้างให้ตรงกับ app/lib/share/schema.ts
+    // (Rules ตรวจค่าที่ซ้อนอยู่ใน list ไม่ได้ API จึง validate ละเอียดอีกชั้น)
     match /temporary_shared_bills/{shareId} {
-      // อนุญาตให้ทุกคนอ่านได้ (เพื่อแชร์บิล)
-      allow read: if true;
-      
-      // อนุญาตให้สร้างได้โดยไม่ต้องล็อกอิน (สำหรับสร้างลิงค์แชร์ชั่วคราว)
-      allow create: if true;
-      
-      // ไม่อนุญาตให้แก้ไขหรือลบ (จะถูกลบอัตโนมัติเมื่อหมดอายุ)
+      function isValidShare(data) {
+        return data.keys().hasOnly([
+            'billName', 'totalAmount', 'vat', 'discount', 'serviceCharge', 'splitMethod',
+            'categoryId', 'participants', 'foodItems', 'splitResults', 'promptPayId',
+            'qrPayload', 'notes', 'shareId', 'createdAt', 'expiryDate', 'expiresAt',
+            'isTemporary', 'type'
+          ]) &&
+          data.keys().hasAll([
+            'billName', 'totalAmount', 'splitMethod', 'participants', 'foodItems',
+            'shareId', 'createdAt', 'expiryDate', 'expiresAt', 'isTemporary', 'type'
+          ]) &&
+          shareId.matches('^[0-9a-f]{32}$') &&
+          data.shareId == shareId &&
+          data.isTemporary == true &&
+          data.type == 'temp_share' &&
+          data.billName is string && data.billName.size() > 0 && data.billName.size() <= 200 &&
+          data.totalAmount is number && data.totalAmount >= 0 &&
+          data.splitMethod in ['equal', 'itemized'] &&
+          data.participants is list && data.participants.size() > 0 && data.participants.size() <= 50 &&
+          data.foodItems is list && data.foodItems.size() <= 200 &&
+          (!('splitResults' in data) || (data.splitResults is list && data.splitResults.size() <= 50)) &&
+          (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+          (!('promptPayId' in data) || (data.promptPayId is string && data.promptPayId.size() <= 20)) &&
+          (!('qrPayload' in data) || (data.qrPayload is string && data.qrPayload.size() <= 512)) &&
+          data.createdAt is string && data.expiryDate is string &&
+          // หมดอายุภายใน 24 ชม. (เผื่อเวลาคลาดเคลื่อน 1 ชม.)
+          data.expiresAt is timestamp &&
+          data.expiresAt > request.time &&
+          data.expiresAt <= request.time + duration.value(25, 'h');
+      }
+
+      // อ่านทีละเอกสารด้วย ID (32 hex แบบสุ่ม เดาไม่ได้) ได้ทุกคน
+      // ห้าม list เพื่อไม่ให้ใครดึงบิลที่แชร์ทั้งหมด (มีชื่อคนและเลข PromptPay)
+      allow get: if true;
+      allow list: if false;
+
+      allow create: if isValidShare(request.resource.data);
+
+      // ไม่อนุญาตให้แก้ไขหรือลบ ลิงก์ที่หมดอายุ API จะตอบ 410
+      // การลบจริงให้ตั้ง TTL policy ของ Firestore บนฟิลด์ expiresAt
       allow update, delete: if false;
     }
     

@@ -1,12 +1,9 @@
 'use client';
 
-import { Suspense, lazy, useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Button } from '@/app/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Card';
 import { useAuthModal } from './context/AuthModalContext';
-
-
-const ChatbotButton = lazy(() => import('./components/ChatbotButton'));
 
 
 const features = [
@@ -263,12 +260,6 @@ export default function HomeClient() {
           </div>
         </div>
       </footer>
-      <ChatbotButton 
-        defaultSystemPrompt="คุณเป็นผู้ช่วยอัจฉริยะของแอพพลิเคชัน BuddyPay ซึ่งช่วยในการแบ่งบิลและคำนวณค่าใช้จ่ายระหว่างเพื่อน คุณสามารถให้ข้อมูลเกี่ยวกับวิธีการแบ่งบิล การชำระเงินผ่าน QR Code และ PromptPay รวมถึงฟีเจอร์ต่างๆ ของแอพพลิเคชัน เช่น การบันทึกประวัติการแชร์บิล การแจ้งเตือนยอดค้างชำระ และอื่นๆ"
-        position="bottom-right"
-        botName="BuddyPay Helper"
-        primaryColor="bg-primary"
-      />
     </div>
   );
 } 
