@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { handleChatRequest, type ChatDependencies } from '@/app/lib/chat/handler';
-import { createRateLimiter } from '@/app/lib/chat/rateLimit';
+import { createRateLimiter } from '@/app/lib/rateLimit';
 import { CHAT_LIMITS } from '@/app/lib/chat/validation';
 
 const VALID_BODY = { messages: [{ role: 'user', content: 'แบ่งบิลยังไง' }] };

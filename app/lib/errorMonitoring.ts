@@ -300,20 +300,6 @@ class ErrorMonitoring {
   }
 
   /**
-   * ดึงข้อมูล User Context
-   */
-  private getUserContext(): Partial<ErrorContext> {
-    if (typeof window === 'undefined') return {};
-
-    try {
-      const stored = sessionStorage.getItem('error_monitoring_user');
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  }
-
-  /**
    * ตั้งค่า Network Error Monitoring
    */
   private setupNetworkErrorMonitoring(): void {
@@ -460,8 +446,7 @@ class ErrorMonitoring {
         });
       }
 
-      // ส่งไป API endpoint สำหรับบันทึก error
-      await this.sendToErrorAPI(errorReport);
+      // ไม่ส่งไป /api/errors แล้ว (ปิดใช้งาน endpoint) error แสดงให้ผู้ใช้เห็นผ่าน ErrorBoundary แทน
 
       // ส่งไป Third-party services (เช่น Sentry, LogRocket ฯลฯ) - เฉพาะ production
       if (this.isProduction) {
@@ -471,26 +456,6 @@ class ErrorMonitoring {
     } catch (error) {
       // ไม่ให้ error ของ error monitoring ไปรบกวนระบบหลัก
       // Silent fail เพื่อป้องกัน recursive error
-    }
-  }
-
-  /**
-   * ส่งไป Error API
-   */
-  private async sendToErrorAPI(errorReport: ErrorReport): Promise<void> {
-    try {
-      await fetch('/api/errors', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...errorReport,
-          userContext: this.getUserContext(),
-        }),
-      });
-    } catch (error) {
-      // Silent fail
     }
   }
 

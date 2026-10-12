@@ -1,5 +1,5 @@
 import { CHAT_LIMITS, chatRequestSchema, type ChatMessage } from './validation';
-import type { RateLimiter } from './rateLimit';
+import type { RateLimiter } from '../rateLimit';
 
 /**
  * Logic ของ POST /api/chat แยกออกจาก route เพื่อให้ทดสอบได้โดยไม่ต้องใช้

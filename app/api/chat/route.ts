@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { handleChatRequest } from '@/app/lib/chat/handler';
 import { isAiChatEnabled } from '@/app/lib/chat/featureFlag';
-import { createRateLimiter } from '@/app/lib/chat/rateLimit';
+import { createRateLimiter } from '@/app/lib/rateLimit';
 import { CHAT_SYSTEM_PROMPT } from '@/app/lib/chat/systemPrompt';
 import { verifyFirebaseIdToken } from '@/app/lib/server/firebaseAdmin';
 
