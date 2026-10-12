@@ -293,14 +293,8 @@ export const useStatistics = (user: any, loading: boolean) => {
 
     try {
       const bills = mockBills;
-      const { monthData, monthLookup } = createLast6MonthsData();
-      
-      // ใช้ค่าที่แตกต่างกันในแต่ละเดือนเพื่อให้กราฟมีความน่าสนใจ
-      const mockValues = [900, 500, 1200, 650, 850, 350];
-      for (let i = 0; i < monthData.length; i++) {
-        monthData[i].value = mockValues[i];
-      }
-      
+      const { monthLookup } = createLast6MonthsData();
+
       // แปลง mockBills ให้ตรงกับ interface Bill
       const convertedBills: Bill[] = bills.map(bill => ({
         id: bill.id,
@@ -308,7 +302,7 @@ export const useStatistics = (user: any, loading: boolean) => {
         date: bill.date,
         totalAmount: bill.totalAmount,
         category: bill.category,
-        status: (bill.status === 'settled' ? 'settled' : bill.status === 'pending' ? 'pending' : bill.status === 'partial' ? 'partial' : 'pending') as 'settled' | 'partial' | 'pending',
+        status: bill.status,
         createdAt: bill.createdAt,
         participants: bill.participants || [],
         splitResults: bill.splitResults || [],
@@ -320,6 +314,7 @@ export const useStatistics = (user: any, loading: boolean) => {
         categoryCounts,
         categoryTotals,
         billStatuses,
+        monthData,
         updatedBills
       } = calculateStatistics(convertedBills, monthLookup);
       

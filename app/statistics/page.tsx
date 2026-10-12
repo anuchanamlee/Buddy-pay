@@ -62,7 +62,12 @@ export default function StatisticsPage() {
           <>
             {/* 1) สรุปภาพรวม */}
             <section className="mt-6">
-              <h2 className="text-xl font-semibold mb-3">ภาพรวม</h2>
+              <h2 className="text-xl font-semibold mb-3">
+                ภาพรวม{' '}
+                <span className="ml-1 align-middle rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  ข้อมูลตัวอย่าง
+                </span>
+              </h2>
               <StatisticsCards stats={stats} renderSafeAmount={renderSafeAmount} />
             </section>
 
