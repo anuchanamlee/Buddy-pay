@@ -143,19 +143,18 @@ export default function RootLayout({
                 <ErrorMonitoringProvider>
                   <AuthModalProvider>
                     <AppShell>{children}</AppShell>
+                    {/* อยู่ภายใต้ AuthProvider เพื่อใช้ ID token ของผู้ใช้เรียก /api/chat */}
+                    <ChatbotPopup
+                      position="bottom-right"
+                      botName="BuddyPay Helper"
+                      primaryColor="bg-blue-600"
+                    />
                   </AuthModalProvider>
                 </ErrorMonitoringProvider>
               </AuthProvider>
             </FirebaseProvider>
           </Providers>
         </ErrorBoundary>
-        <ChatbotPopup 
-          apiKey={process.env.NEXT_PUBLIC_OPENAI_API_KEY}
-          defaultSystemPrompt="คุณเป็นผู้ช่วยอัจฉริยะของแอพพลิเคชัน BuddyPay ซึ่งช่วยในการแบ่งบิลและคำนวณค่าใช้จ่ายระหว่างเพื่อน คุณสามารถให้คำแนะนำเกี่ยวกับ: \n\n1. วิธีการใช้งานแอพพลิเคชัน BuddyPay \n2. การแบ่งบิลด้วยวิธีต่างๆ (แบ่งเท่ากัน หรือตามรายการอาหาร) \n3. การใช้งานระบบชำระเงินผ่าน QR Code และ PromptPay \n4. การบันทึกประวัติการแชร์บิล \n5. การแก้ไขปัญหาที่อาจเกิดขึ้นระหว่างการใช้งาน \n6. คำถามทั่วไปเกี่ยวกับการแบ่งบิลและการชำระเงิน \n\nคุณจะให้ข้อมูลที่ถูกต้องและเป็นประโยชน์เสมอ พร้อมทั้งใช้ภาษาที่เป็นมิตรและเข้าใจง่าย"
-          position="bottom-right"
-          botName="BuddyPay Helper"
-          primaryColor="bg-blue-600"
-        />
       </body>
     </html>
   );

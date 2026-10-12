@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import ChatbotPopup from './ChatbotPopup';
 
 type ChatbotButtonProps = {
-  apiKey?: string;
-  defaultSystemPrompt?: string;
   position?: 'bottom-right' | 'bottom-left';
   botName?: string;
   primaryColor?: string;
