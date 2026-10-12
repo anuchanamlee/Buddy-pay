@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Type-check, Lint, Unit tests, Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      # Firebase web config ไม่ใช่ secret (ถูกฝังใน JavaScript ของ browser อยู่แล้ว)
+      # จึงอ่านจาก Repository variables ไม่ใช่ secrets ถ้ายังไม่ได้ตั้งค่า build จะยังผ่าน
+      # แต่จะแสดง warning ว่า build นี้ deploy ไม่ได้ — ไม่มีการใช้ค่าปลอมใด ๆ
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ vars.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ vars.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ vars.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ vars.NEXT_PUBLIC_FIREBASE_APP_ID }}
+
+  firestore-rules:
+    name: Firestore Rules tests (Emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Firestore Emulator ต้องใช้ Java
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Firebase emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('package-lock.json') }}
+
+      - run: npm ci
+
+      # ใช้ demo project (demo-*) ซึ่ง Emulator รันแบบ offline ทั้งหมด ไม่ต้องล็อกอินและไม่แตะ Firebase จริง
+      - name: Rules tests
+        run: npm run test:rules
