@@ -16,6 +16,7 @@ import {
 } from '@/app/lib/billDraft';
 import { calculateSplit } from '@/app/lib/billCalculator';
 import { toSatang } from '@/app/lib/money';
+import { personBreakdown } from '@/app/lib/breakdown';
 import type { Bill } from '@/app/lib/schema';
 
 const empty: BillDraft = { participants: [], foodItems: [] };
@@ -158,5 +159,28 @@ describe('quickDraft', () => {
 describe('defaultBillName', () => {
   it('ใช้วันที่ภาษาไทยแบบสั้น', () => {
     expect(defaultBillName(new Date(2026, 9, 13))).toBe('บิล 13 ต.ค.');
+  });
+});
+
+
+describe('personBreakdown', () => {
+  it('ผลรวมรายละเอียดเท่ากับยอดที่ต้องจ่าย (ก่อนปัดสตางค์)', () => {
+    let d = withPeople('a', 'b', 'c');
+    d = addItem(d, 'หมู', 100, 'i1');
+    d = addItem(d, 'เบียร์', 59, 'i2');
+    d = toggleEater(d, 'i2', 'c');
+    const extras = { vat: 7, serviceCharge: 10, discount: 5 };
+    const results = split(d, extras);
+    for (const r of results) {
+      const b = personBreakdown(r.participant.id, d.foodItems, extras);
+      const exact = b.food + b.vat + b.service - b.discount;
+      expect(Math.abs(exact - r.amount)).toBeLessThan(0.011);
+    }
+  });
+  it('คนที่ไม่ได้กินอะไรได้ 0', () => {
+    let d = addItem(withPeople('a', 'b'), 'x', 50, 'i1');
+    d = toggleEater(d, 'i1', 'b');
+    const b = personBreakdown('b', d.foodItems, { vat: 7, serviceCharge: 10, discount: 10 });
+    expect(b).toMatchObject({ food: 0, vat: 0, service: 0, discount: 0, items: [] });
   });
 });

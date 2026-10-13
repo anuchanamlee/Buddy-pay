@@ -1,344 +1,224 @@
 'use client';
 
-import { useReducer, useEffect } from 'react';
-
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Card, CardFooter } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Stepper } from '@/app/components/ui/Stepper';
-import generatePayload from 'promptpay-qr';
 import { billReducer } from '../reducers/billReducer';
 import { initialState } from '../lib/billTypes';
 import { useBillManagement } from '../hooks/useBillManagement';
+import { BillEditor, BillFooter, type BillExtras } from '../components/bill/BillEditor';
+import { QuickSplit } from '../components/bill/QuickSplit';
+import { BillResult } from '../components/bill/BillResult';
+import {
+  clearSessionDraft,
+  defaultBillName,
+  loadSavedPromptPay,
+  loadSessionDraft,
+  quickDraft,
+  savePromptPay,
+  saveSessionDraft,
+  whatIsMissing,
+  type BillDraft,
+} from '../lib/billDraft';
+import { cn } from '@/lib/utils';
 
-// แยก components ตาม step
-import ParticipantsStep from '../components/BillSteps/ParticipantsStep';
-import FoodItemsStep from '../components/BillSteps/FoodItemsStep';
-import SplitMethodStep from '../components/BillSteps/SplitMethodStep';
-import FoodParticipantsStep from '../components/BillSteps/FoodParticipantsStep';
-import BillDetailsStep from '../components/BillSteps/BillDetailsStep';
-import ResultStep from '../components/BillSteps/ResultStep';
+type Mode = 'items' | 'quick';
+type View = 'edit' | 'result';
 
-// Lazy loading ของคอมโพเนนต์ที่มีขนาดใหญ่
-
-
+/**
+ * หารบิล 2 หน้า: ใส่บิล → ผลลัพธ์
+ * (เดิม 5 ขั้น: ผู้ร่วมบิล, รายการ, วิธีหาร, ข้อมูลบิล, ผลลัพธ์)
+ */
 export default function ShareBillPage() {
-  const { user, isAuthenticated } = useAuth();
-  const [state, dispatch] = useReducer(billReducer, initialState);
-
-  // ใช้ custom hook เพื่อจัดการ logic ส่วนใหญ่
+  const { isAuthenticated, user } = useAuth();
+  const [state, dispatch] = useReducer(billReducer, { ...initialState, splitMethod: 'itemized' });
   const {
     promptPayId,
     setPromptPayId,
-    qrPayload,
-    setQrPayload,
-    currentStep,
-    isLoading,
-    error,
-    notes,
-    setNotes,
     calculatedResults,
-    handleRemoveParticipant,
-    handleRemoveFoodItem,
     handleSaveBill,
-    loadInitialData,
-    setupRealtimeListener,
-    canProceedToNextStep,
-    goToNextStep,
-    goToPreviousStep,
-    goToStep,
-    // กลุ่มผู้เข้าร่วม
+    isLoading,
     savedGroups,
     saveParticipantGroup,
-    loadParticipantGroup
+    loadParticipantGroups,
   } = useBillManagement(state, dispatch);
 
-  // สร้าง dynamic steps ตาม splitMethod
-  const getStepsForDisplay = () => {
-    const baseSteps = [
-      { title: 'ผู้ร่วมบิล', description: 'ใส่ชื่อผู้ร่วมบิล' },
-      { title: 'รายการอาหาร', description: 'ใส่รายการอาหาร' },
-      { title: 'วิธีหาร', description: 'เลือกวิธีหารบิล' }
-    ];
+  const [mode, setMode] = useState<Mode>('items');
+  const [view, setView] = useState<View>('edit');
+  const [pendingSave, setPendingSave] = useState(false);
+  const [ready, setReady] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
 
-    if (state.splitMethod === 'itemized') {
-      return [
-        ...baseSteps,
-        { title: 'จัดสรรรายการ', description: 'เลือกผู้กินแต่ละรายการ' },
-        { title: 'ข้อมูลบิล', description: 'ตั้งชื่อและรายละเอียด' },
-        { title: 'ผลลัพธ์', description: 'สรุปการหารบิล' }
-      ];
-    } else {
-      return [
-        ...baseSteps,
-        { title: 'ข้อมูลบิล', description: 'ตั้งชื่อและรายละเอียด' },
-        { title: 'ผลลัพธ์', description: 'สรุปการหารบิล' }
-      ];
+  const draft: BillDraft = useMemo(() => ({ participants: state.participants, foodItems: state.foodItems }), [state.participants, state.foodItems]);
+  const extras: BillExtras = { vat: state.vat, serviceCharge: state.serviceCharge, discount: state.discount };
+
+  const setDraft = useCallback((next: BillDraft) => {
+    dispatch({ type: 'SET_PARTICIPANTS', payload: next.participants });
+    dispatch({ type: 'SET_FOOD_ITEMS', payload: next.foodItems });
+  }, []);
+
+  const setExtras = useCallback((next: BillExtras) => {
+    dispatch({ type: 'SET_VAT', payload: next.vat });
+    dispatch({ type: 'SET_SERVICE_CHARGE', payload: next.serviceCharge });
+    dispatch({ type: 'SET_DISCOUNT', payload: next.discount });
+  }, []);
+
+  // เปิดหน้า: คืนบิลที่ค้างไว้ (เช่นกลับมาจากการล็อกอิน) และเลขพร้อมเพย์ที่เคยใช้
+  useEffect(() => {
+    const saved = loadSessionDraft();
+    if (saved) {
+      setDraft(saved);
+      setExtras(saved);
+      dispatch({ type: 'SET_BILL_NAME', payload: saved.billName || '' });
+      setMode(saved.mode);
+      setView(saved.view);
+      setPendingSave(!!saved.pendingSave);
     }
+    const pp = loadSavedPromptPay();
+    if (pp) setPromptPayId(pp);
+    setReady(true);
+    // เรียกครั้งเดียวตอนเปิดหน้า
+  }, []);
+
+  // เก็บบิลที่กำลังกรอกทุกครั้งที่เปลี่ยน
+  useEffect(() => {
+    if (!ready) return;
+    saveSessionDraft({ ...draft, ...extras, billName: state.billName, view, mode, pendingSave });
+  }, [ready, draft, extras.vat, extras.serviceCharge, extras.discount, state.billName, view, mode, pendingSave]);
+
+  // กลุ่มที่บันทึกไว้ (เฉพาะคนที่ล็อกอิน)
+  useEffect(() => {
+    if (user && isAuthenticated) loadParticipantGroups();
+  }, [user, isAuthenticated, loadParticipantGroups]);
+
+  // ผลลัพธ์ล่าสุดเก็บใน state เพื่อใช้ตอนบันทึก
+  useEffect(() => {
+    dispatch({ type: 'SET_SPLIT_RESULTS', payload: calculatedResults });
+  }, [calculatedResults]);
+
+  const showResult = () => {
+    if (!state.billName.trim()) dispatch({ type: 'SET_BILL_NAME', payload: defaultBillName() });
+    setView('result');
+    topRef.current?.scrollIntoView({ block: 'start' });
   };
 
-  // แปลง currentStep สำหรับการแสดงผล
-  const getDisplayStep = () => {
-    if (state.splitMethod === 'equal') {
-      // สำหรับ equal split: 0,1,2,4,5 -> 0,1,2,3,4
-      if (currentStep <= 2) return currentStep;
-      if (currentStep === 4) return 3;
-      if (currentStep === 5) return 4;
-    }
-    return currentStep;
-  };
-
-  // แปลง display step กลับเป็น actual step
-  const getActualStep = (displayStep: number) => {
-    if (state.splitMethod === 'equal') {
-      // สำหรับ equal split: 0,1,2,3,4 -> 0,1,2,4,5
-      if (displayStep <= 2) return displayStep;
-      if (displayStep === 3) return 4;
-      if (displayStep === 4) return 5;
-    }
-    return displayStep;
-  };
-
-  // useEffect สำหรับการโหลดข้อมูลเริ่มต้น
-  useEffect(() => {
-    if (user && isAuthenticated) {
-      loadInitialData();
-    }
-  }, [user, isAuthenticated, loadInitialData]);
-
-  // useEffect สำหรับ real-time updates
-  useEffect(() => {
-    const unsubscribe = setupRealtimeListener();
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [setupRealtimeListener]);
-
-  // useEffect สำหรับอัพเดตผลลัพธ์
-  useEffect(() => {
-    if (((currentStep === 4 && state.splitMethod === 'equal') || (currentStep === 5 && state.splitMethod === 'itemized')) && calculatedResults.length > 0) {
-      dispatch({ type: 'SET_SPLIT_RESULTS', payload: calculatedResults });
-    }
-  }, [currentStep, calculatedResults, dispatch, state.splitMethod]);
-
-  // useEffect เพื่อสร้าง QR code อัตโนมัติเมื่อผู้ใช้กรอกข้อมูลครบ
-  useEffect(() => {
-    if (!promptPayId) return;
-    
-    // เลือกเฉพาะตัวเลขจากเบอร์ PromptPay
-    const sanitizedId = promptPayId.replace(/[^0-9]/g, '');
-    
-    // ตรวจสอบว่าเป็นเบอร์มือถือ (10 หลัก) หรือเลขประจำตัวประชาชน (13 หลัก)
-    if (sanitizedId.length === 10 || sanitizedId.length === 13) {
+  const save = useCallback(async () => {
+    if (!isAuthenticated) {
+      // ล็อกอินแล้วจะกลับมาหน้านี้และบันทึกต่อให้อัตโนมัติ บิลไม่หาย
       try {
-        // สร้าง QR Code สำหรับ PromptPay
-        const amount = 0; // ใส่จำนวนเงินเป็น 0 เสมอ
-        const payload = generatePayload(sanitizedId, { amount });
-        setQrPayload(payload);
-      } catch (error) {
-        console.error('Error generating QR code:', error);
+        sessionStorage.setItem('returnUrl', '/share-bill');
+      } catch {
+        /* ไม่เป็นไร */
       }
-    } else {
-      // ล้าง QR code ถ้าข้อมูลไม่ถูกต้อง
-      setQrPayload('');
+      setPendingSave(true);
+      await handleSaveBill(); // เปิดหน้าต่างล็อกอิน
+      return;
     }
-  }, [promptPayId, setQrPayload]);
+    setPendingSave(false);
+    const ok = await handleSaveBill();
+    if (ok) clearSessionDraft();
+  }, [isAuthenticated, handleSaveBill]);
 
-  // แสดงข้อความโหลดข้อมูล
-  if (isLoading && state.bills.length === 0) {
-    return <div className="loading">กำลังโหลดข้อมูล...</div>;
-  }
-  
-  // แสดงข้อความเมื่อเกิดข้อผิดพลาด
-  if (error && state.bills.length === 0) {
-    return (
-      <div className="error bg-red-50 p-4 rounded-md border border-red-200 text-red-700">
-        <h3 className="font-semibold mb-2 flex items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-          </svg>
-          เกิดข้อผิดพลาดในการโหลดข้อมูล
-        </h3>
-        <p>{error.message}</p>
-        <button 
-          onClick={() => loadInitialData()} 
-          className="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
-        >
-          ลองใหม่
-        </button>
-      </div>
-    );
-  }
+  // กลับมาจากการล็อกอินพร้อมคำสั่งบันทึกที่ค้างไว้
+  useEffect(() => {
+    if (ready && isAuthenticated && pendingSave && view === 'result' && calculatedResults.length > 0) {
+      save();
+    }
+  }, [ready, isAuthenticated, pendingSave, view, calculatedResults.length, save]);
+
+  const missing = whatIsMissing(draft);
 
   return (
-    <div className="bg-gray-50 min-h-screen py-6 sm:py-8">
-      <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto">
-          <header className="text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 text-foreground">
-              แชร์ค่าอาหาร
-            </h1>
-            <p className="text-base sm:text-lg text-muted-foreground mb-4 sm:mb-6">
-              แชร์ค่าอาหารกับเพื่อนๆ ได้อย่างง่ายดาย รวดเร็ว และยุติธรรม
-            </p>
-          </header>
-
-          {/* เพิ่ม Stepper */}
-          <div className="mb-6 sm:mb-8">
-            <Stepper 
-              steps={getStepsForDisplay()} 
-              activeStep={getDisplayStep()} 
-              onStepClick={(displayStep) => {
-                // อนุญาตให้ย้อนกลับไป step ก่อนหน้าได้ แต่ไม่อนุญาตให้ข้าม step ไปข้างหน้า
-                if (displayStep < getDisplayStep()) {
-                  const actualStep = getActualStep(displayStep);
-                  goToStep(actualStep);
-                }
-              }}
-              className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200"
-            />
-          </div>
-
-          {/* Toast notification */}
-          {state.toast.show && (
-            <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transform transition-all duration-300 ${
-              state.toast.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' :
-              state.toast.type === 'error' ? 'bg-red-100 text-red-800 border border-red-200' :
-              'bg-yellow-100 text-yellow-800 border border-yellow-200'
-            }`}>
-              <div className="flex items-center gap-2">
-                {state.toast.type === 'success' && (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-                {state.toast.type === 'error' && (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                )}
-                {state.toast.type === 'warning' && (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                )}
-                <span>{state.toast.message}</span>
+    <div className="min-h-screen bg-background pb-8 pt-20">
+      <div ref={topRef} className="mx-auto max-w-2xl scroll-mt-20 px-4">
+        {view === 'edit' ? (
+          <>
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <h1 className="text-2xl font-bold text-foreground">หารบิล</h1>
+              <div role="tablist" aria-label="วิธีใส่บิล" className="inline-flex rounded-full bg-muted p-1">
+                {(
+                  [
+                    { id: 'items', label: 'ใส่รายการ' },
+                    { id: 'quick', label: 'หารด่วน' },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    key={t.id}
+                    role="tab"
+                    type="button"
+                    aria-selected={mode === t.id}
+                    onClick={() => setMode(t.id)}
+                    className={cn(
+                      'min-h-[36px] rounded-full px-4 text-sm font-semibold transition-colors',
+                      mode === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
             </div>
-          )}
 
-          <div className="space-y-6">
-            <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden rounded-lg border border-gray-200">
-              {/* แสดงเนื้อหาตาม step ปัจจุบัน */}
-              {getDisplayStep() === 0 && (
-                <ParticipantsStep 
-                  state={state}
-                  handleRemoveParticipant={handleRemoveParticipant}
-                  onUpdateParticipant={(updated) => dispatch({ type: 'UPDATE_PARTICIPANT', payload: updated })}
+            {mode === 'items' ? (
+              <>
+                <BillEditor
+                  draft={draft}
+                  onDraftChange={setDraft}
+                  extras={extras}
+                  onExtrasChange={setExtras}
                   savedGroups={savedGroups}
-                  onSaveGroup={saveParticipantGroup}
-                  onSelectGroup={loadParticipantGroup}
+                  onSaveGroup={isAuthenticated ? (name) => saveParticipantGroup(name) : undefined}
                 />
-              )}
-
-              {getDisplayStep() === 1 && (
-                <FoodItemsStep
-                  state={state}
-                  handleRemoveFoodItem={handleRemoveFoodItem}
-                  onUpdateFoodItem={(updated) => dispatch({ type: 'UPDATE_FOOD_ITEM', payload: updated })}
-                />
-              )}
-
-              {getDisplayStep() === 2 && (
-                <SplitMethodStep
-                  state={state}
-                  dispatch={dispatch}
-                />
-              )}
-
-              {getDisplayStep() === 3 && state.splitMethod === 'itemized' && (
-                <FoodParticipantsStep
-                  state={state}
-                  dispatch={dispatch}
-                />
-              )}
-
-              {(getDisplayStep() === 3 && state.splitMethod === 'equal') && (
-                <BillDetailsStep
-                  state={state}
-                  dispatch={dispatch}
-                  promptPayId={promptPayId}
-                  setPromptPayId={setPromptPayId}
-                  notes={notes}
-                  setNotes={setNotes}
-                />
-              )}
-
-              {getDisplayStep() === 4 && state.splitMethod === 'itemized' && (
-                <BillDetailsStep
-                  state={state}
-                  dispatch={dispatch}
-                  promptPayId={promptPayId}
-                  setPromptPayId={setPromptPayId}
-                  notes={notes}
-                  setNotes={setNotes}
-                />
-              )}
-
-              {((getDisplayStep() === 4 && state.splitMethod === 'equal') || (getDisplayStep() === 5 && state.splitMethod === 'itemized')) && (
-                <ResultStep
-                  state={{...state, splitResults: calculatedResults}}
-                  promptPayId={promptPayId}
-                  qrPayload={qrPayload}
-                  notes={notes}
-                />
-              )}
-
-              {/* Step navigation buttons */}
-              <CardFooter className="bg-gray-50 border-t px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between gap-3 sm:gap-0">
-                {getDisplayStep() > 0 ? (
-                  <Button 
-                    onClick={goToPreviousStep} 
-                    variant="outline"
-                    className="flex items-center justify-center gap-2 w-full sm:w-auto order-2 sm:order-1"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    ย้อนกลับ
-                  </Button>
-                ) : (
-                  <div className="hidden sm:block"></div> // ให้ปุ่ม "ถัดไป" อยู่ด้านขวาเสมอ
-                )}
-                
-                {getDisplayStep() < getStepsForDisplay().length - 1 ? (
-                  <Button 
-                    onClick={goToNextStep} 
-                    className="bg-primary hover:bg-primary/90 flex items-center justify-center gap-2 w-full sm:w-auto order-1 sm:order-2"
-                    disabled={!canProceedToNextStep()}
-                  >
-                    ถัดไป
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Button>
-                ) : (
-                  <Button 
-                    onClick={handleSaveBill} 
-                    className="bg-primary hover:bg-primary/90 flex items-center justify-center gap-2 w-full sm:w-auto order-1 sm:order-2"
-                    disabled={!canProceedToNextStep()}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
-                    บันทึกบิล
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
+                <div className="mt-8">
+                  <BillFooter total={state.totalAmount} missing={missing} onSubmit={showResult} />
+                </div>
+              </>
+            ) : (
+              <QuickSplit
+                onSubmit={(total, count) => {
+                  setDraft(quickDraft(total, count));
+                  setExtras({ vat: 0, serviceCharge: 0, discount: 0 });
+                  showResult();
+                }}
+              />
+            )}
+          </>
+        ) : (
+          <BillResult
+            mode="create"
+            billName={state.billName}
+            onBillNameChange={(name) => dispatch({ type: 'SET_BILL_NAME', payload: name })}
+            participants={state.participants}
+            foodItems={state.foodItems}
+            results={calculatedResults}
+            extras={extras}
+            total={state.totalAmount}
+            categoryId={state.categoryId}
+            promptPayId={promptPayId}
+            onPromptPayChange={(v) => {
+              setPromptPayId(v);
+              savePromptPay(v);
+            }}
+            onEdit={() => {
+              setView('edit');
+              topRef.current?.scrollIntoView({ block: 'start' });
+            }}
+            onSave={save}
+            isSaving={isLoading}
+          />
+        )}
       </div>
+
+      {state.toast.show && (
+        <div
+          role="status"
+          className={cn(
+            'fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-medium shadow-lg',
+            state.toast.type === 'error' ? 'bg-destructive text-white' : 'bg-foreground text-background',
+          )}
+        >
+          {state.toast.message}
+        </div>
+      )}
     </div>
   );
-} 
+}

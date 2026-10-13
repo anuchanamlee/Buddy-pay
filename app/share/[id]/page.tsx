@@ -2,12 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import ResultStep from '@/app/components/BillSteps/ResultStep';
+import Link from 'next/link';
+import { BillResult } from '@/app/components/bill/BillResult';
+import { Button, buttonVariants } from '@/app/components/ui/Button';
+import { formatThaiDate } from '@/app/lib/format';
+import { cn } from '@/lib/utils';
 import { BillState } from '@/app/lib/billTypes';
 import { getAppUrl } from '@/app/lib/utils';
-import { format } from 'date-fns';
-import { th } from 'date-fns/locale';
-import { AlertCircle, Clock } from 'lucide-react';
 import { useAuthModal } from '@/app/context/AuthModalContext';
 import { useAuth } from '@/app/context/AuthContext';
 
@@ -96,67 +97,56 @@ export default function SharedBillPage() {
       if (billData) saveBillToFirestore(billData);
     } else {
       shouldSaveBill.current = true;
+      // ล็อกอินเสร็จให้กลับมาหน้านี้ (เดิมถูกพาไปหน้าแรก)
+      try {
+        sessionStorage.setItem('returnUrl', window.location.pathname);
+      } catch {
+        /* ไม่เป็นไร */
+      }
       openSignupModal();
     }
   };
 
   // --- UI state: loading, error, not found ---
-  if (loading) return <div className="p-10 text-center">กำลังโหลด...</div>;
-  if (error) return <div className="p-10 text-center text-red-600">{error}</div>;
-  if (!billData) return <div className="p-10 text-center text-gray-500">ไม่พบข้อมูลบิล</div>;
+  if (loading) return <div className="pt-28 text-center text-muted-foreground">กำลังโหลดบิล...</div>;
+  if (error || !billData) {
+    return (
+      <div className="mx-auto max-w-md px-4 pt-28 text-center">
+        <h1 className="text-xl font-bold text-foreground">เปิดบิลนี้ไม่ได้</h1>
+        <p className="mt-2 text-muted-foreground">{error || 'ไม่พบข้อมูลบิล'} ลิงก์ใช้ได้ 24 ชั่วโมงหลังสร้าง ขอลิงก์ใหม่จากคนที่ส่งมาได้</p>
+        <Link href="/share-bill" className={cn(buttonVariants(), 'mt-6')}>หารบิลของคุณเอง</Link>
+      </div>
+    );
+  }
 
-  // --- Main render ---
+  const results = billData.splitResults || [];
+  const total = billData.totalAmount || results.reduce((sum, r) => sum + r.amount, 0);
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="bg-white rounded-xl shadow-sm border p-6 mb-6">
-              <h1 className="text-3xl font-bold text-gray-800 mb-3">📋 ผลลัพธ์การหารบิล</h1>
-              <p className="text-gray-600 mb-4">{billData.billName || 'บิลที่ถูกแชร์'}</p>
-              <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1" />
-                  สร้างเมื่อ: {format(new Date(billData.createdAt), 'd MMM yyyy เวลา HH:mm', { locale: th })}
-                </div>
-                <div className="flex items-center text-orange-600">
-                  <AlertCircle className="w-4 h-4 mr-1" />
-                  หมดอายุ: {format(new Date(billData.expiryDate), 'd MMM yyyy', { locale: th })}
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-background pb-12 pt-20">
+      <div className="mx-auto max-w-2xl px-4">
+        <p className="mb-4 rounded-lg bg-jade-50 px-3 py-2 text-sm text-jade-900">
+          บิลที่เพื่อนส่งมา ลิงก์ใช้ได้ถึง {formatThaiDate(billData.expiryDate)}
+        </p>
+        <BillResult
+          mode="shared"
+          billName={billData.billName || 'บิลที่แชร์'}
+          date={new Date(billData.createdAt)}
+          participants={billData.participants || []}
+          foodItems={billData.foodItems || []}
+          results={results}
+          extras={{ vat: Number(billData.vat) || 0, serviceCharge: Number(billData.serviceCharge) || 0, discount: Number(billData.discount) || 0 }}
+          total={total}
+          promptPayId={billData.promptPayId || ''}
+          notes={billData.notes || ''}
+          shareUrl={`${getAppUrl()}/share/${params.id}`}
+        />
 
-          {/* Content */}
-          <div className="bg-white rounded-lg shadow-sm">
-            <ResultStep
-              state={billData}
-              promptPayId={billData.promptPayId || ''}
-              qrPayload={billData.qrPayload || ''}
-              notes={billData.notes || ''}
-              isSharedView={true}
-              existingShareUrl={`${getAppUrl()}/share/${params.id}`}
-            />
-          </div>
-
-          {/* Footer */}
-          <div className="text-center mt-8 p-6 bg-white rounded-xl shadow-sm border">
-            {billData.isTemporary && (
-              <button
-                onClick={handleLoginAndSaveBill}
-                className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors mr-3"
-              >
-                🔒 ล็อกอินและเก็บบิล
-              </button>
-            )}
-            <button
-              onClick={() => router.push('/share-bill')}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              {billData.isTemporary ? 'สร้างบิลใหม่' : 'เริ่มใช้ BuddyPay'}
-            </button>
-          </div>
+        <div className="mt-10 flex flex-col gap-2 border-t border-border pt-6 sm:flex-row sm:justify-between">
+          <Link href="/share-bill" className={buttonVariants({ variant: 'outline' })}>หารบิลของคุณเอง</Link>
+          <Button variant="secondary" onClick={handleLoginAndSaveBill}>
+            {isAuthenticated ? 'เก็บบิลนี้ไว้ในบัญชีของฉัน' : 'ล็อกอินแล้วเก็บบิลนี้'}
+          </Button>
         </div>
       </div>
     </div>

@@ -353,16 +353,17 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
   }, [dispatch]);
 
   // ฟังก์ชันสำหรับการบันทึกบิล
-  const handleSaveBill = useCallback(async () => {
+  // คืน true เมื่อบันทึกสำเร็จ (หน้าเรียกใช้จะล้างบิลที่ค้างไว้)
+  const handleSaveBill = useCallback(async (): Promise<boolean> => {
     if (!isAuthenticated) {
       // เปิด modal ล็อกอินแทนการนำทางไปหน้าล็อกอิน
       openLoginModal();
-      return;
+      return false;
     }
 
     if (!state.billName || state.participants.length === 0 || state.foodItems.length === 0) {
       showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
-      return;
+      return false;
     }
     
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -399,10 +400,11 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
       
       // นำทางไปยังหน้ารายละเอียดบิล
       router.push(`/bill/${docRef.id}`);
-      
+      return true;
     } catch (error) {
       console.error('Error saving bill:', error);
       showToast('เกิดข้อผิดพลาดในการบันทึกบิล', 'error');
+      return false;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
       setIsLoading(false);

@@ -148,3 +148,50 @@ export function savePromptPay(value: string): void {
     // เบราว์เซอร์ไม่ให้เก็บข้อมูล (เช่นโหมดส่วนตัว) ก็ใช้งานต่อได้ แค่ต้องพิมพ์ใหม่
   }
 }
+
+// เก็บบิลที่กำลังกรอกไว้ใน sessionStorage: ถ้าต้องล็อกอินกลางทาง (หน้าเว็บถูกพาไปหน้าอื่น)
+// หรือเผลอรีเฟรช บิลจะไม่หาย ปิดแท็บแล้วหายเอง
+const SESSION_KEY = 'buddypay:draft';
+
+export interface SessionDraft extends BillDraft {
+  billName: string;
+  vat: number;
+  serviceCharge: number;
+  discount: number;
+  notes?: string;
+  view: 'edit' | 'result';
+  mode: 'items' | 'quick';
+  pendingSave?: boolean;
+}
+
+export function saveSessionDraft(value: SessionDraft): void {
+  try {
+    if (value.participants.length === 0 && value.foodItems.length === 0) {
+      window.sessionStorage.removeItem(SESSION_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(value));
+  } catch {
+    // เก็บไม่ได้ก็ใช้งานต่อได้ตามปกติ
+  }
+}
+
+export function loadSessionDraft(): SessionDraft | null {
+  try {
+    const raw = window.sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    if (!v || !Array.isArray(v.participants) || !Array.isArray(v.foodItems)) return null;
+    return v as SessionDraft;
+  } catch {
+    return null;
+  }
+}
+
+export function clearSessionDraft(): void {
+  try {
+    window.sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ไม่เป็นไร
+  }
+}
