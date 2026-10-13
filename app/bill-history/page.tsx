@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import LoginPrompt from '../components/LoginPrompt';
 import { mockBills } from '../lib/mockData';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/app/components/ui/Card';
-import { Users, CheckCircle2, XCircle, Trash2, Receipt, Plus } from 'lucide-react';
+import { Users, CheckCircle2, Clock, Trash2, Receipt, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CategoryIcon } from '../components/CategorySelect';
 
@@ -411,7 +411,7 @@ export default function BillHistory() {
         <div className="flex items-center gap-2 self-end sm:self-auto">
           <Button
             variant="outline"
-            className={`text-xs sm:text-sm ${loading ? 'bg-blue-200' : 'bg-blue-500 hover:bg-blue-600'} text-white`}
+            size="sm"
             onClick={() => {
               setLoading(true);
               fetchBills(true);
@@ -508,7 +508,7 @@ export default function BillHistory() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-xs sm:text-sm flex items-center text-amber-600">
-                          <XCircle size={14} className="mr-1" />
+                          <Clock size={14} className="mr-1" aria-hidden />
                           รอชำระ
                         </span>
                         {isAuthenticated && bill.userId === user?.uid && (

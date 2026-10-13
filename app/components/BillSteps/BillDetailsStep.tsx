@@ -75,7 +75,7 @@ export default function BillDetailsStep({
 
   return (
     <>
-      <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b px-6 py-4">
+      <CardHeader className="bg-card border-b px-6 py-4">
         <CardTitle className="text-xl font-semibold flex items-center">
           <span className="bg-primary text-white rounded-full w-7 h-7 inline-flex items-center justify-center mr-2.5 text-sm shadow-sm">4</span>
           <span className="text-primary/90">ข้อมูลบิล</span>

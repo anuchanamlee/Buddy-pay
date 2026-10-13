@@ -172,7 +172,7 @@ export default function QuickAddFoodItemsModal({
           </button>
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary/90 to-purple-600 p-6 text-white relative overflow-hidden">
+          <div className="bg-primary p-6 text-white relative overflow-hidden">
             <motion.div 
               className="absolute inset-0 opacity-20" 
               initial={{ backgroundPosition: '0% 0%' }}

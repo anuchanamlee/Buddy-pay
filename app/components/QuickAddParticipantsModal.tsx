@@ -79,7 +79,7 @@ export default function QuickAddParticipantsModal({
           </button>
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-primary/80 p-5 text-white">
+          <div className="bg-primary p-5 text-white">
             <h2 className="text-xl font-bold">เพิ่มรายชื่อผู้เข้าร่วม</h2>
             <p className="mt-1 text-sm opacity-90">
               เพิ่มรายชื่อผู้เข้าร่วมทีละคน กดปุ่ม "เพิ่มและไปต่อ" เพื่อเพิ่มคนถัดไป

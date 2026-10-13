@@ -51,7 +51,7 @@ export default function SelectGroupModal({
           </button>
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-primary/80 p-5 text-white">
+          <div className="bg-primary p-5 text-white">
             <h2 className="text-xl font-bold">เลือกกลุ่มผู้เข้าร่วม</h2>
             <p className="mt-1 text-sm opacity-90">
               เลือกกลุ่มที่บันทึกไว้เพื่อเพิ่มรายชื่อทั้งหมด

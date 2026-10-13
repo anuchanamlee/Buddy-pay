@@ -170,7 +170,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             </button>
             
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white">
+            <div className="bg-primary p-6 text-white">
               <h2 className="text-2xl font-bold">
                 {mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
               </h2>

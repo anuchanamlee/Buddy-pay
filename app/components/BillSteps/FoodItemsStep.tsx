@@ -65,7 +65,7 @@ export default function FoodItemsStep({
 
   return (
     <>
-      <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-primary/20 to-primary/5 border-b px-6 py-4 sticky top-0 z-10">
+      <CardHeader className="flex flex-row items-center justify-between bg-card border-b px-6 py-4 sticky top-0 z-10">
         <CardTitle className="text-xl font-semibold flex items-center">
           <div className={`w-8 h-8 rounded-full ${getCountClassNames()} inline-flex items-center justify-center mr-2.5 text-sm shadow-sm`}>2</div>
           <span className="text-primary">รายการอาหาร</span>
@@ -142,7 +142,7 @@ export default function FoodItemsStep({
             
             {/* สรุปยอดรวม */}
             <motion.div 
-              className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-lg border border-primary/20 p-4"
+              className="bg-jade-50 rounded-lg border border-primary/20 p-4"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}

@@ -44,7 +44,7 @@ export default function FoodParticipantsStep({
 
   return (
     <>
-      <CardHeader className="bg-gradient-to-r from-primary/20 to-primary/5 border-b px-6 py-4">
+      <CardHeader className="bg-card border-b px-6 py-4">
         <CardTitle className="text-xl font-semibold flex items-center">
           <div className="w-8 h-8 rounded-full bg-primary text-white inline-flex items-center justify-center mr-2.5 text-sm shadow-sm">4</div>
           <span className="text-primary">เลือกผู้กินแต่ละรายการ</span>

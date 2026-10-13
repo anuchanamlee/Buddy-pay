@@ -4,26 +4,26 @@ import { cn } from '@/lib/utils';
 
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center rounded-[10px] text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        primary: 'bg-gradient-to-r from-primary to-secondary text-white border-none shadow-sm hover:-translate-y-0.5 hover:shadow-md active:translate-y-0',
-        secondary: 'bg-transparent text-foreground border border-border hover:bg-muted hover:border-muted-foreground',
-        success: 'bg-gradient-to-r from-success-500 to-[#10B981] text-white border-none shadow-sm hover:-translate-y-0.5 hover:shadow-md',
-        warning: 'bg-gradient-to-r from-warning-500 to-warning-400 text-white border-none shadow-sm hover:-translate-y-0.5 hover:shadow-md',
-        danger: 'bg-gradient-to-r from-destructive to-danger-400 text-white border-none shadow-sm hover:-translate-y-0.5 hover:shadow-md',
-        outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+        primary: 'bg-primary text-primary-foreground hover:bg-jade-700 active:bg-jade-800',
+        secondary: 'bg-secondary text-secondary-foreground hover:bg-jade-100',
+        success: 'bg-success-500 text-white hover:bg-success-700',
+        warning: 'bg-warning-500 text-white hover:bg-warning-700',
+        danger: 'bg-destructive text-white hover:bg-red-700',
+        outline: 'border border-input bg-card text-foreground hover:bg-accent hover:text-accent-foreground',
         ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
         xs: 'h-7 px-2.5 text-xs',
         sm: 'h-9 px-3',
-        md: 'h-10 px-4',
+        md: 'h-11 px-4',
         lg: 'h-11 px-6',
         xl: 'h-12 px-8',
-        icon: 'h-10 w-10',
+        icon: 'h-11 w-11',
       },
       isLoading: {
         true: 'relative text-transparent transition-none hover:text-transparent',

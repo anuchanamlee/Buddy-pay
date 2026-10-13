@@ -69,7 +69,7 @@ export default function SaveGroupModal({
           </button>
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-primary to-primary/80 p-5 text-white">
+          <div className="bg-primary p-5 text-white">
             <h2 className="text-xl font-bold">บันทึกกลุ่ม</h2>
             <p className="mt-1 text-sm opacity-90">
               บันทึกกลุ่มผู้เข้าร่วมเพื่อใช้ในครั้งต่อไป

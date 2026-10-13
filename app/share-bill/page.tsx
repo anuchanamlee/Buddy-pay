@@ -175,7 +175,7 @@ export default function ShareBillPage() {
       <div className="container mx-auto px-4">
         <div className="max-w-3xl mx-auto">
           <header className="text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 text-foreground">
               แชร์ค่าอาหาร
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground mb-4 sm:mb-6">

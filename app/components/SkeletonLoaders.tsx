@@ -103,7 +103,7 @@ export const BillSummarySkeleton = () => {
   return (
     <div className="max-w-2xl mx-auto p-4">
       {/* Header skeleton */}
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-t-xl">
+      <div className="bg-jade-600 p-6 rounded-t-xl">
         <div className="flex justify-between items-center mb-6">
           <Skeleton className="h-7 w-1/3 bg-white/30" />
           <Skeleton variant="rounded" className="h-6 w-1/4 bg-white/30" />

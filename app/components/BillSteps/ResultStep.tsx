@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { formatTHB } from '@/app/lib/format';
 import { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { BillState } from '../../lib/billTypes';
-import { User, ChevronDown, ChevronUp, Utensils, CreditCard, FileText, DollarSign, AlertCircle, Calendar, Users, Share2, Copy, Check, UserPlus, Save } from 'lucide-react';
+import { ChevronDown, ChevronUp, Utensils, CreditCard, FileText, DollarSign, AlertCircle, Calendar, Users, Share2, Copy, Check, UserPlus, Save } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { PerPersonPromptPayQR } from '../PromptPayQR';
+import { ReceiptSlip } from '../ui/ReceiptSlip';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { useAuth } from '../../context/AuthContext';
@@ -246,7 +247,7 @@ export default function ResultStep({
       </CardHeader>
       <CardContent className="p-6">
         {/* Overview Card */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-500 rounded-xl p-5 text-white mb-6 shadow-lg">
+        <div className="bg-jade-700 rounded-xl p-5 text-white mb-6">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-xl font-bold">{state.billName}</h1>
             <div className="bg-white/20 px-3 py-1 rounded-full text-sm flex items-center">
@@ -285,23 +286,13 @@ export default function ResultStep({
 
 
 
-        <div className="bg-green-50 border border-green-100 rounded-md p-3 mb-5 text-sm text-green-700">
-          <p className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            นี่คือจำนวนเงินที่แต่ละคนต้องจ่าย สามารถบันทึกบิลเพื่อส่งต่อให้เพื่อนได้
-          </p>
-        </div>
-
         {/* แสดงรายละเอียดการจ่ายเงินของแต่ละคน */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-            <User className="w-5 h-5 mr-2 text-blue-500" />
-            แบ่งชำระค่าอาหาร
+            ยอดที่แต่ละคนต้องจ่าย
           </h3>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {state.splitResults?.map((result) => {
               const details = getParticipantDetails(result.participant.id);
               if (!details) return null;
@@ -309,48 +300,24 @@ export default function ResultStep({
               const isExpanded = expandedCards[result.participant.id];
               
               return (
-                <div 
+                <ReceiptSlip
                   key={result.participant.id}
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                  name={result.participant.name}
+                  amount={result.amount}
+                  detail={`${details.foodItems.length} รายการ`}
+                  status={result.participant.status === 'paid' ? 'paid' : undefined}
                 >
-                  {/* หัว Card - คลิกได้ */}
-                  <div 
-                    className="p-3 sm:p-4 cursor-pointer border-b bg-gray-50 hover:bg-gray-100 transition-colors"
+                  <button
+                    type="button"
                     onClick={() => toggleCard(result.participant.id)}
+                    aria-expanded={!!isExpanded}
+                    className="mt-2 -mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between rounded-md px-1 py-2 text-sm font-medium text-primary hover:bg-accent"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center min-w-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold mr-2 sm:mr-3 flex-shrink-0">
-                          {result.participant.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-semibold text-gray-800 text-sm sm:text-base truncate">{result.participant.name}</h4>
-                          <p className="text-xs sm:text-sm text-gray-500">{details.foodItems.length} รายการ</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center flex-shrink-0">
-                        <div className="text-right mr-2 sm:mr-3">
-                          <div className="text-lg sm:text-xl font-bold text-blue-600">
-                            {formatTHB(result.amount)} ฿
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            ต้องจ่าย
-                          </div>
-                        </div>
-                        
-                        {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* รายละเอียดค่าใช้จ่าย - เปิดปิดได้ */}
+                    {isExpanded ? 'ซ่อนรายละเอียด' : 'ดูว่ามาจากอะไร'}
+                    {isExpanded ? <ChevronUp className="h-4 w-4" aria-hidden /> : <ChevronDown className="h-4 w-4" aria-hidden />}
+                  </button>
                   {isExpanded && (
-                    <div className="p-4 bg-gray-50">
+                    <div className="pb-1 text-sm">
                       {/* รายการอาหาร */}
                       <div className="mb-4">
                         <h5 className="text-sm font-medium text-gray-700 mb-2">รายการอาหาร</h5>
@@ -402,16 +369,9 @@ export default function ResultStep({
                         )}
                       </div>
 
-                      {/* ยอดรวม */}
-                      <div className="border-t border-gray-300 pt-3 mt-3">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-gray-800">รวมทั้งสิ้น</span>
-                          <span className="text-xl font-bold text-blue-600">{formatTHB(details.total)} ฿</span>
-                        </div>
-                      </div>
                     </div>
                   )}
-                </div>
+                </ReceiptSlip>
               );
             })}
           </div>
@@ -615,7 +575,7 @@ export default function ResultStep({
           
           {/* ส่วนแชร์ลิงค์ - ตำแหน่งใหม่ (ท้ายสุด) */}
           <div className="mt-8 pt-6 border-t border-gray-200">
-            <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 p-6">
+            <div className="bg-jade-50 rounded-xl border border-jade-200 p-6">
               <div className="text-center">
                 <h3 className="text-xl font-bold text-gray-800 mb-2 flex items-center justify-center">
                   <Share2 className="w-6 h-6 mr-2 text-indigo-600" />
@@ -703,7 +663,7 @@ export default function ResultStep({
              
              {/* Prompt สำหรับการเก็บบิลถาวร */}
              {showSavePrompt && shareUrl && !isAuthenticated && (
-               <div className="mt-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-xl p-6">
+               <div className="mt-6 bg-card border border-border rounded-xl p-6">
                  <div className="text-center">
                    <div className="mb-4">
                      <div className="bg-green-100 rounded-full p-3 inline-block mb-3">

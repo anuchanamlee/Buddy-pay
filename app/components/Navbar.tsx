@@ -188,15 +188,17 @@ export default function Navbar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-16 bg-background border-b border-border z-50">
-      <div className="container mx-auto h-full flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 h-16 bg-card/95 backdrop-blur border-b border-border z-50">
+      <div className="container mx-auto h-full px-4 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
-              LB
-            </div>
-            <span className="font-semibold text-lg">BuddyPay</span>
+        <Link href="/" aria-label="BuddyPay หน้าแรก" className="rounded-md">
+          <div className="flex items-center gap-2">
+            {/* โลโก้: สลิปใบเสร็จมีรอยปรุ */}
+            <svg width="28" height="32" viewBox="0 0 28 32" aria-hidden="true">
+              <path d="M4 0h20a4 4 0 0 1 4 4v24l-3.5 4-3.5-4-3.5 4-3.5-4-3.5 4-3.5-4L0 32V4a4 4 0 0 1 4-4z" fill="var(--primary)" />
+              <text x="14" y="20" textAnchor="middle" fontSize="15" fontWeight="700" fill="#fff" fontFamily="var(--font-plex-thai), sans-serif">฿</text>
+            </svg>
+            <span className="font-bold text-lg text-foreground">BuddyPay</span>
           </div>
         </Link>
 
