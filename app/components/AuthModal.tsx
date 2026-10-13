@@ -155,6 +155,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
           
           {/* Modal */}
           <motion.div
+            role="dialog"
+            aria-modal="true"
             className="relative z-10 w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}

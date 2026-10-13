@@ -188,9 +188,9 @@ Deploy บน Vercel: import repo ใส่ environment variables ชุดเ�
 
 ## การทดสอบ
 
-- **Unit tests** (`npm test`, 87 รายการ): การคำนวณบิลและการแบ่งสตางค์, การแก้บิลระหว่างกรอก, QR พร้อมเพย์, การลบบัญชี, การติ๊กจ่าย, API ลิงก์แชร์ และ Next.js config/security headers
+- **Unit tests** (`npm test`, 93 รายการ): การคำนวณบิลและการแบ่งสตางค์, การแก้บิลระหว่างกรอก, QR พร้อมเพย์, การลบบัญชี, การติ๊กจ่าย, API ลิงก์แชร์ และ Next.js config/security headers
 - **Firestore Rules tests** (`npm run test:rules`): รันบน Firestore Emulator ด้วย demo project แบบ offline **ไม่แตะ Firebase จริง** ครอบคลุมการแยกข้อมูลระหว่างผู้ใช้ทุก collection
-- **E2E** (`npm run test:e2e`): Playwright กดแอปแบบผู้ใช้จริง 31 ข้อ เช่น หารบิลด้วยคีย์บอร์ดล้วน, แยกคนกิน, VAT/ค่าบริการ/ส่วนลด, หารด่วน, กรอกผิด, รีเฟรชแล้วบิลไม่หาย, ไม่ล้นจอที่ 360px (ต้อง `npm run build && npx next start -p 3100` ก่อน)
+- **E2E** (`npm run test:e2e`): Playwright กดแอปแบบผู้ใช้จริง 41 ข้อ เช่น หารบิลด้วยคีย์บอร์ดล้วน, แยกคนกิน, VAT/ค่าบริการ/ส่วนลด, หารด่วน, กรอกผิด, รีเฟรชแล้วบิลไม่หาย, ไม่ล้นจอที่ 360px (ต้อง `npm run build && npx next start -p 3100` ก่อน)
 - **ยังไม่มี:** E2E ของการล็อกอินและบันทึกบิลกับ Firebase Auth/Firestore Emulator
 
 ## CI
@@ -221,20 +221,18 @@ Deploy บน Vercel: import repo ใส่ environment variables ชุดเ�
 
 | เรื่อง | ผลกระทบ | ตำแหน่ง |
 |---|---|---|
-| หน้าสถิติดึงบิลทุกใบโดยไม่จำกัดจำนวน และหน้า Admin ดึงทั้ง collection เพื่อนับ | ช้าลงและค่า Firestore เพิ่มตามจำนวนข้อมูล | `app/hooks/useStatistics.ts`, `app/admin/components/DashboardStats.tsx` |
+| หน้าสถิติคิดจากบิลล่าสุด 300 ใบ | ผู้ใช้ที่มีบิลมากกว่านั้นเห็นสถิติเฉพาะ 300 ใบล่าสุด (หน้าแจ้งไว้) | `app/hooks/useStatistics.ts` |
 | Middleware ตรวจสิทธิ์จาก cookie ที่ตั้งฝั่ง client (ปลอมได้) | ใช้เพื่อพาไปหน้าล็อกอินเท่านั้น ข้อมูลจริงมี Firestore Rules ป้องกัน | `middleware.ts` |
 | API ลิงก์แชร์ใช้ Firebase client SDK แบบไม่ล็อกอิน | ผู้ไม่หวังดีเขียนตรงเข้า Firestore ได้ (ภายใต้ข้อจำกัดของ Rules) โดยเลี่ยง rate limit ของ API | `app/api/share/create/route.ts` |
 | Rate limit เก็บในหน่วยความจำ | นับแยกตาม server instance และรีเซ็ตเมื่อ instance ถูกปิด | `app/lib/rateLimit.ts` |
-| JavaScript ที่โหลดครั้งแรกค่อนข้างหนัก | หน้าสถิติ 429 kB และหน้าสร้างบิล 360 kB | ผลจาก `npm run build` |
+| JavaScript ที่โหลดครั้งแรกยังมี Firebase SDK ทุกหน้า | หน้าสถิติ 276 kB และหน้าสร้างบิล 304 kB (ลดจาก 427 และ 343 kB) | ผลจาก `npm run build` |
 | CSP ยังมี `'unsafe-inline'` และ `'unsafe-eval'` | ลดประสิทธิภาพในการป้องกัน XSS | `next.config.ts` |
 
 ## แนวทางพัฒนาต่อ
 
 1. ย้าย API ที่เขียน Firestore ไปใช้ Firebase Admin SDK แล้วปิดการเขียนตรงจาก client ใน Rules
 2. ใช้ session cookie ที่ server ออกและตรวจได้ แทน cookie ที่ตั้งฝั่ง client ใน middleware
-3. ใช้ `getCountFromServer` และจำกัดจำนวนข้อมูลในหน้าสถิติและหน้า Admin
-4. โหลดกราฟแบบ lazy (dynamic import)
-5. เพิ่ม E2E ของการล็อกอินและบันทึกบิลด้วย Firebase Auth/Firestore Emulator
+3. เพิ่ม E2E ของการล็อกอินและบันทึกบิลด้วย Firebase Auth/Firestore Emulator
 
 ## License
 

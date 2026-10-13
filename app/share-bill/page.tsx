@@ -163,7 +163,7 @@ export default function ShareBillPage() {
 
   return (
     <div className="min-h-screen bg-background pb-8 pt-6">
-      <div ref={topRef} className="mx-auto max-w-2xl scroll-mt-24 px-4">
+      <div ref={topRef} className="mx-auto max-w-2xl px-4">
         {view === 'edit' ? (
           <>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -202,9 +202,9 @@ export default function ShareBillPage() {
                   savedGroups={savedGroups}
                   onSaveGroup={isAuthenticated ? (name) => saveParticipantGroup(name) : undefined}
                 />
-                <div className="mt-8">
-                  <BillFooter total={state.totalAmount} missing={missing} onSubmit={showResult} />
-                </div>
+                {/* ไม่ครอบ BillFooter ด้วย div: sticky ติดอยู่ในกล่องแม่ ถ้ามีกล่องครอบแถบจะไม่ติดล่างจอ */}
+                <div className="h-8" aria-hidden="true" />
+                <BillFooter total={state.totalAmount} missing={missing} onSubmit={showResult} />
               </>
             ) : (
               <QuickSplit

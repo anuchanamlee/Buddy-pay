@@ -1,7 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import AuthModal from '../components/AuthModal';
+import dynamic from 'next/dynamic';
+
+// โหลดหน้าต่างล็อกอิน (และ framer-motion) แยกไฟล์ ไม่ให้ทุกหน้าต้องโหลดตั้งแต่แรก
+const loadAuthModal = () => import('../components/AuthModal');
+const AuthModal = dynamic(loadAuthModal, { ssr: false });
 
 type AuthMode = 'login' | 'signup';
 
@@ -57,6 +61,19 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
     window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
   }, []);
 
+  // เคยเปิดแล้วค่อย mount (หลังจากนั้นค้างไว้ให้ animation ตอนปิดทำงาน)
+  const [hasOpened, setHasOpened] = useState(false);
+  useEffect(() => {
+    if (isAuthModalOpen) setHasOpened(true);
+  }, [isAuthModalOpen]);
+  // โหลดไฟล์ล่วงหน้าตอนเบราว์เซอร์ว่าง กดล็อกอินแล้วหน้าต่างขึ้นทันที
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number };
+    const preload = () => void loadAuthModal();
+    if (w.requestIdleCallback) w.requestIdleCallback(preload);
+    else window.setTimeout(preload, 2000);
+  }, []);
+
   return (
     <AuthModalContext.Provider
       value={{
@@ -67,11 +84,13 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={closeAuthModal}
-        initialMode={authModalMode}
-      />
+      {hasOpened && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={closeAuthModal}
+          initialMode={authModalMode}
+        />
+      )}
     </AuthModalContext.Provider>
   );
 }

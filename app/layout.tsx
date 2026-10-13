@@ -48,6 +48,8 @@ export const viewport: Viewport = {
   userScalable: true, // ให้ผู้ใช้ซูมได้เพื่อความเป็น accessibility
   themeColor: '#146F68',
   colorScheme: 'light',
+  // Android Chrome: คีย์บอร์ดเปิดแล้วหดหน้าเว็บตาม ช่องพิมพ์และแถบล่างจอจึงไม่ถูกคีย์บอร์ดบัง
+  interactiveWidget: 'resizes-content',
 };
 
 // revalidate ทุก 24 ชม.

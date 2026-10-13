@@ -3,16 +3,18 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { invalidateStatsCache } from "../../hooks/useStatistics";
 import { Bill, FoodItem } from "../../lib/schema";
 import { calculateSplit } from "../../lib/billCalculator";
 import { fromSatang, toSatang } from "../../lib/money";
 import { PerPersonPromptPayQR, sanitizePromptPayId } from "../../components/PromptPayQR";
 import { formatTHB, formatThaiDate } from "../../lib/format";
 import { useParams, useRouter } from "next/navigation";
-import { FirebaseProvider, useFirebase } from "../../components/providers/FirebaseWrapper";
+import { useFirebase } from "../../components/providers/FirebaseWrapper";
 import { useAuthModal } from "../../context/AuthModalContext";
 import { Button } from "@/app/components/ui/Button";
 import { ReceiptSlip } from "@/app/components/ui/ReceiptSlip";
+import { AmountInput } from "@/app/components/ui/AmountInput";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, CheckCircle2, Clock, Pencil, Save, AlertTriangle } from "lucide-react";
 import { CategoryIcon } from "../../components/CategorySelect";
@@ -274,6 +276,7 @@ function BillDetailContent() {
         const billRef = doc(db, "bills", bill.id);
         const allPaid = updatedParticipants.every((p: any) => p.status === "paid");
         const status = allPaid ? "paid" : "pending";
+        invalidateStatsCache();
         await updateDoc(billRef, { participants: updatedParticipants, splitResults: updatedSplitResults, status });
 
         setBill((prev) =>
@@ -301,6 +304,7 @@ function BillDetailContent() {
             )
           : bill.splitResults;
         const billRef = doc(db, "bills", bill.id);
+        invalidateStatsCache();
         await updateDoc(billRef, { participants: updatedParticipants, splitResults: updatedSplitResults, status: newStatus });
         setBill((prev) =>
           prev ? { ...prev, participants: updatedParticipants, splitResults: updatedSplitResults, status: newStatus } : prev
@@ -349,6 +353,7 @@ function BillDetailContent() {
   
       // 3) อัปเดต Firestore (เขียน totalAmount ด้วย)
       const { id: _omit, ...payload } = bill;
+      invalidateStatsCache();
       await updateDoc(doc(db, "bills", bill.id), {
         ...payload,
         totalAmount: grand,
@@ -655,13 +660,9 @@ function BillDetailContent() {
                 placeholder="ชื่อเมนู"
                 aria-label="ชื่อเมนู"
               />
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                min="0"
-                value={item.price ?? 0}
-                onChange={(e) => handleUpdateFoodItem(item.id, "price" as any, e.target.value)}
+              <AmountInput
+                value={Number(item.price) || 0}
+                onValueChange={(v) => handleUpdateFoodItem(item.id, "price" as any, v)}
                 className={cn(fieldClass, "tabular-nums")}
                 placeholder="ราคา"
                 aria-label="ราคา (บาท)"
@@ -770,9 +771,6 @@ function BillDetailContent() {
  * Page wrapper
  */
 export default function BillDetailPage() {
-  return (
-    <FirebaseProvider>
-      <BillDetailContent />
-    </FirebaseProvider>
-  );
+  // FirebaseProvider ครอบทั้งแอปอยู่แล้วใน layout ไม่ต้องครอบซ้ำ (เดิมทำให้ฟังสถานะล็อกอินซ้ำ 2 ชุด)
+  return <BillDetailContent />;
 }

@@ -184,6 +184,15 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* เวลาเบราว์เซอร์เลื่อนไปหาช่องที่กำลังพิมพ์ เว้นที่ให้ navbar ด้านบนและแถบยอดรวมด้านล่าง */
+  html {
+    scroll-padding-top: 5rem;
+    scroll-padding-bottom: 6rem;
+  }
+  /* คีย์บอร์ดมือถือเปิดอยู่: ซ่อนแถบที่ติดล่างจอชั่วคราว ให้เห็นช่องที่พิมพ์ (ดู app/components/KeyboardAware.tsx) */
+  html[data-keyboard='open'] [data-sticky-footer] {
+    display: none;
+  }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;

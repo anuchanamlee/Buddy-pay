@@ -3,9 +3,15 @@
 import { useRouter } from 'next/navigation';
 import { useFirebase } from '../components/providers/FirebaseWrapper';
 import { Button } from '@/app/components/ui/Button';
-import { useStatistics } from '@/app/hooks/useStatistics';
+import { useStatistics, STATS_MAX_BILLS } from '@/app/hooks/useStatistics';
 import { StatisticsCards } from '@/app/components/statistics/StatisticsCards';
-import { StatisticsCharts } from '@/app/components/statistics/StatisticsCharts';
+import dynamic from 'next/dynamic';
+
+// กราฟ (Recharts) หนักราว 100 kB โหลดแยกหลังตัวเลขสรุปขึ้นแล้ว
+const StatisticsCharts = dynamic(
+  () => import('@/app/components/statistics/StatisticsCharts').then((m) => m.StatisticsCharts),
+  { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-xl bg-muted" aria-hidden="true" /> },
+);
 import { StatisticsDetails } from '@/app/components/statistics/StatisticsDetails';
 import { PendingParticipants } from '@/app/components/statistics/PendingParticipants';
 import { calculatePercentage } from '@/app/utils/statistics';
@@ -50,17 +56,17 @@ export default function StatisticsPage() {
     </section>
   );
 
-  // Loading states
+  // Loading states (รอเช็กการล็อกอินก่อน คนที่ล็อกอินอยู่จะได้ไม่เห็นข้อความ "ข้อมูลตัวอย่าง")
+  if (loading || (isLoading && user)) {
+    return <StatisticsPageSkeleton />;
+  }
+
   if (!user && !stats) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         <Header subtitle="กำลังโหลดข้อมูลตัวอย่าง..." />
       </div>
     );
-  }
-
-  if (loading || (isLoading && user)) {
-    return <StatisticsPageSkeleton />;
   }
 
   // Not logged-in but has mock data: เห็นแค่การ์ดสรุปกับกราฟตัวอย่าง ที่เหลือชวนเข้าสู่ระบบ
@@ -107,7 +113,7 @@ export default function StatisticsPage() {
   // Logged-in user with stats
   return (
     <div className="container mx-auto px-4 py-12 max-w-7xl">
-      <Header />
+      <Header subtitle={stats && stats.totalBills >= STATS_MAX_BILLS ? `คิดจาก ${STATS_MAX_BILLS} บิลล่าสุด` : undefined} />
 
       {error && (
         <div
