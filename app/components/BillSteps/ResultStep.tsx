@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { formatTHB } from '@/app/lib/format';
 import { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { BillState } from '../../lib/billTypes';
-import { ChevronDown, ChevronUp, Utensils, CreditCard, FileText, DollarSign, AlertCircle, Calendar, Users, Share2, Copy, Check, UserPlus, Save } from 'lucide-react';
+import { ChevronDown, ChevronUp, Utensils, CreditCard, FileText, AlertCircle, Share2, Copy, Check, UserPlus, Save } from 'lucide-react';
 import QRCode from 'react-qr-code';
 import { PerPersonPromptPayQR } from '../PromptPayQR';
 import { ReceiptSlip } from '../ui/ReceiptSlip';
@@ -247,44 +247,16 @@ export default function ResultStep({
       </CardHeader>
       <CardContent className="p-6">
         {/* Overview Card */}
-        <div className="bg-jade-700 rounded-xl p-5 text-white mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-xl font-bold">{state.billName}</h1>
-            <div className="bg-white/20 px-3 py-1 rounded-full text-sm flex items-center">
-              <Calendar className="w-4 h-4 mr-2" />
-              {format(new Date(), 'd MMMM yyyy', { locale: th })}
-            </div>
+        <div className="mb-6 rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h1 className="text-xl font-bold text-foreground">{state.billName}</h1>
+            <p className="text-sm text-muted-foreground">{format(new Date(), 'd MMMM yyyy', { locale: th })}</p>
           </div>
-          
-          {/* ข้อมูลสรุป */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
-            <div className="bg-white/10 p-2 sm:p-3 rounded-lg">
-              <div className="flex justify-center mb-1">
-                <Utensils className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <div className="text-xs opacity-80">รายการอาหาร</div>
-              <div className="text-lg sm:text-xl font-bold mt-1">{state.foodItems.length}</div>
-            </div>
-            
-            <div className="bg-white/10 p-2 sm:p-3 rounded-lg">
-              <div className="flex justify-center mb-1">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <div className="text-xs opacity-80">ผู้ร่วมจ่าย</div>
-              <div className="text-lg sm:text-xl font-bold mt-1">{state.participants.length}</div>
-            </div>
-            
-            <div className="bg-white/10 p-2 sm:p-3 rounded-lg">
-              <div className="flex justify-center mb-1">
-                <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <div className="text-xs opacity-80">ยอดรวม</div>
-              <div className="text-lg sm:text-xl font-bold mt-1">{formatTHB(state.totalAmount)} ฿</div>
-            </div>
-          </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {state.foodItems.length} รายการ, {state.participants.length} คน, รวม{' '}
+            <span className="font-semibold tabular-nums text-foreground">{formatTHB(state.totalAmount)} บาท</span>
+          </p>
         </div>
-
-
 
         {/* แสดงรายละเอียดการจ่ายเงินของแต่ละคน */}
         <div className="mb-8">
@@ -602,7 +574,7 @@ export default function ResultStep({
                     ) : (
                       <>
                         <Share2 className="w-5 h-5 mr-3" />
-                        {isSharedView ? '🔗 แสดงลิงค์นี้' : '🔗 สร้างลิงค์แชร์'}
+                        {isSharedView ? 'แสดงลิงค์นี้' : 'สร้างลิงค์แชร์'}
                       </>
                     )}
                   </button>
