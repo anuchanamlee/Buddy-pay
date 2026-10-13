@@ -43,6 +43,8 @@
 | บันทึกและประวัติบิล | บันทึกบิลลง Firestore (ล็อกอินกลางทางแล้วบิลไม่หาย) ติ๊กคนที่จ่ายแล้วได้จากหน้าประวัติ (transaction กันเขียนทับ) แก้และลบบิลได้ | `app/bill-history/`, `app/bill/[id]/`, `app/components/history/` |
 | ผู้ค้างชำระ | สรุปว่าใครยังไม่จ่ายและยอดเท่าไร ทั้งในหน้าสถิติและแจ้งเตือนบน Navbar (real-time) | `app/hooks/useStatistics.ts`, `app/components/Navbar.tsx` |
 | สถิติการใช้จ่าย | กราฟรายเดือนและแยกตามหมวดหมู่ (Recharts) | `app/statistics/` |
+| ใช้บนมือถือ (PWA) | ติดตั้งลงหน้าจอโฮมได้ทั้ง iPhone และ Android, ทางลัดตอนกดค้างที่ไอคอน (Android), ไอคอนหารด่วนแยก, หน้าหารบิลใช้ได้ตอนไม่มีเน็ต | `app/install/`, `app/quick/`, `public/manifest.json`, `public/sw.js` |
+| ตัวเลขบนไอคอนและแจ้งเตือนทวงเงิน | ไอคอนขึ้นจำนวนคนที่ยังค้าง และแจ้งเตือนทุกเย็นผ่าน Web Push (ไม่บังคับ ฟรี) | `app/lib/pwa.ts`, `app/api/cron/reminders/` |
 | กลุ่มผู้ร่วมจ่าย | บันทึกรายชื่อเพื่อนเป็นกลุ่ม เพื่อเลือกใช้ซ้ำ | `app/lib/services/participantGroupService.ts` |
 | เข้าสู่ระบบ | Email/Password และ Google Sign-in ผ่าน Firebase Authentication | `app/components/providers/FirebaseWrapper.tsx` |
 | หน้า Admin | จัดการผู้ใช้ ดูภาพรวมบิล และดู activity log (เฉพาะ role `admin`) | `app/admin/` |
@@ -198,9 +200,9 @@ Deploy บน Vercel: import repo ใส่ environment variables ชุดเ�
 
 ## การทดสอบ
 
-- **Unit tests** (`npm test`, 93 รายการ): การคำนวณบิลและการแบ่งสตางค์, การแก้บิลระหว่างกรอก, QR พร้อมเพย์, การลบบัญชี, การติ๊กจ่าย, API ลิงก์แชร์ และ Next.js config/security headers
+- **Unit tests** (`npm test`, 98 รายการ): การคำนวณบิลและการแบ่งสตางค์, การแก้บิลระหว่างกรอก, QR พร้อมเพย์, การลบบัญชี, การติ๊กจ่าย, API ลิงก์แชร์ และ Next.js config/security headers
 - **Firestore Rules tests** (`npm run test:rules`): รันบน Firestore Emulator ด้วย demo project แบบ offline **ไม่แตะ Firebase จริง** ครอบคลุมการแยกข้อมูลระหว่างผู้ใช้ทุก collection
-- **E2E** (`npm run test:e2e`): Playwright กดแอปแบบผู้ใช้จริง 41 ข้อ เช่น หารบิลด้วยคีย์บอร์ดล้วน, แยกคนกิน, VAT/ค่าบริการ/ส่วนลด, หารด่วน, กรอกผิด, รีเฟรชแล้วบิลไม่หาย, ไม่ล้นจอที่ 360px (ต้อง `npm run build && npx next start -p 3100` ก่อน)
+- **E2E** (`npm run test:e2e`): Playwright กดแอปแบบผู้ใช้จริง 52 ข้อ เช่น หารบิลด้วยคีย์บอร์ดล้วน, แยกคนกิน, VAT/ค่าบริการ/ส่วนลด, หารด่วน, กรอกผิด, รีเฟรชแล้วบิลไม่หาย, ไม่ล้นจอที่ 360px (ต้อง `npm run build && npx next start -p 3100` ก่อน)
 - **ยังไม่มี:** E2E ของการล็อกอินและบันทึกบิลกับ Firebase Auth/Firestore Emulator
 
 ## CI
