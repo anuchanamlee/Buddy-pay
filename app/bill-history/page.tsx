@@ -1,12 +1,15 @@
 'use client';
 
 import { formatThaiDate, formatTHB } from '@/app/lib/format';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import LoginPrompt from '../components/LoginPrompt';
 import { mockBills } from '../lib/mockData';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/app/components/ui/Card';
-import { Users, CheckCircle2, Clock, Trash2, Receipt, Plus } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/app/components/ui/Card';
+import { Users, Trash2, Receipt, Plus, AlertCircle } from 'lucide-react';
+import { BillPayments, BillStatusBadge } from '../components/history/BillPayments';
+import { applyPaymentStatus, type PaymentStatus } from '../components/history/paymentLogic';
 import { useRouter } from 'next/navigation';
 import { CategoryIcon } from '../components/CategorySelect';
 
@@ -17,7 +20,7 @@ import {
   where, 
   getDocs, 
   doc, 
-  writeBatch,
+  updateDoc,
   orderBy,
   limit,
   startAfter,
@@ -28,6 +31,7 @@ import {
 } from 'firebase/firestore';
 
 import { Button } from '@/app/components/ui/Button';
+import { cn } from '@/lib/utils';
 import localforage from 'localforage';
 import { BillHistoryPageSkeleton } from '../components/SkeletonLoaders';
 import { InlineLoader } from '../components/ui/PageLoader';
@@ -42,10 +46,13 @@ export default function BillHistory() {
     const router = useRouter();
   // State สำหรับ pagination
   const [page, setPage] = useState(1);
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingBillId, setSavingBillId] = useState<string | null>(null);
+  const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({});
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [bills, setBills] = useState<any[]>([]);
+  const billsRef = useRef<any[]>([]);
+  billsRef.current = bills;
   const [isRealtime, setIsRealtime] = useState(false);
   const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
   
@@ -182,91 +189,55 @@ export default function BillHistory() {
     }
   };
   
-  // หมายเหตุ: ใช้ updateAllParticipants แทน mutation สำหรับอัพเดตสถานะ
-  
-  // ฟังก์ชันสำหรับ batch update สำหรับอัพเดตสถานะทั้งบิล
-  const updateAllParticipants = async (billId: string, newStatus: 'paid' | 'pending') => {
-    if (!isAuthenticated) {
-      alert("กรุณาเข้าสู่ระบบเพื่อดำเนินการ");
-      return;
-    }
-    
-    try {
-      setIsSaving(true);
-      
-      const billToUpdate = bills.find(bill => bill.id === billId);
-      if (!billToUpdate) {
-        alert("ไม่พบบิลที่ต้องการอัพเดต");
-        return;
-      }
-      
-      // ตรวจสอบว่าบิลนี้มีสถานะที่ต้องการอัพเดตอยู่แล้วหรือไม่
-      if (billToUpdate.status === newStatus) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Bill status is already', newStatus);
-        }
-        return;
-      }
+  // ติ๊กสถานะการจ่ายของผู้เข้าร่วมหนึ่งคน (optimistic: อัพเดตหน้าจอก่อน ถ้าบันทึกไม่สำเร็จจะย้อนกลับ)
+  const togglePayment = async (billId: string, participantId: string, newStatus: PaymentStatus) => {
+    const current = billsRef.current.find((b) => b.id === billId);
+    if (!current || savingBillId === billId) return;
+    const previousStatus: PaymentStatus = newStatus === 'paid' ? 'pending' : 'paid';
 
-      // อัพเดตสถานะของผู้เข้าร่วมทุกคน
-      const updatedParticipants = billToUpdate.participants.map((p: any) => ({
-        ...p,
-        status: newStatus
-      }));
-      
-      // ตรวจสอบว่าเป็นการใช้ข้อมูลจำลองหรือไม่
-      if (billToUpdate.id.startsWith('mock-') || !user) {
-        // กรณีใช้ข้อมูลจำลอง เพียงอัพเดต state โดยตรง
-        setBills(prevBills => prevBills.map(bill => {
-          if (bill.id === billId) {
-            return {
-              ...bill,
-              participants: updatedParticipants,
-              status: newStatus
-            };
-          }
-          return bill;
-        }));
-      } else {
-        // กรณีใช้ข้อมูลจริง อัพเดตลง Firebase
-        // ใช้ batch สำหรับการอัพเดตหลายรายการพร้อมกัน
-        const batch = writeBatch(db);
-        const billRef = doc(db, 'bills', billId);
-        
-        // เพิ่มการอัพเดตเข้า batch
-        batch.update(billRef, {
-          participants: updatedParticipants,
-          status: newStatus
-        });
-        
-        // ทำการ commit batch
-        await batch.commit();
-        
-        // อัพเดต state หลังจาก commit สำเร็จ
-        setBills(prevBills => prevBills.map(bill => {
-          if (bill.id === billId) {
-            return {
-              ...bill,
-              participants: updatedParticipants,
-              status: newStatus
-            };
-          }
-          return bill;
-        }));
-        
-        // อัพเดตแคช
-        cacheBills(bills);
-      }
+    const applyToState = (status: PaymentStatus) => {
+      const next = billsRef.current.map((b) =>
+        b.id === billId ? { ...b, ...applyPaymentStatus(b, participantId, status) } : b
+      );
+      billsRef.current = next;
+      setBills(next);
+      return next;
+    };
+
+    setPaymentErrors((prev) => {
+      const { [billId]: _removed, ...rest } = prev;
+      return rest;
+    });
+
+    const updated = applyPaymentStatus(current, participantId, newStatus);
+    applyToState(newStatus);
+
+    // ข้อมูลตัวอย่าง (ยังไม่ล็อกอิน): เปลี่ยนในเครื่องเท่านั้น ไม่เขียน Firestore
+    if (!isAuthenticated || !user || String(billId).startsWith('mock-')) return;
+
+    setSavingBillId(billId);
+    try {
+      const payload: DocumentData = {
+        participants: updated.participants,
+        status: updated.status,
+      };
+      if (updated.splitResults !== undefined) payload.splitResults = updated.splitResults;
+      await updateDoc(doc(db, 'bills', billId), payload);
+      void cacheBills(billsRef.current);
     } catch (error) {
-      console.error('Error updating all participants:', error);
-      alert('เกิดข้อผิดพลาดในการอัพเดตสถานะการชำระเงิน');
+      console.error('Error updating payment status:', error);
+      applyToState(previousStatus);
+      void cacheBills(billsRef.current);
+      const person = current.participants?.find((p: any) => p.id === participantId)?.name || 'ผู้เข้าร่วม';
+      setPaymentErrors((prev) => ({
+        ...prev,
+        [billId]: `บันทึกสถานะของ ${person} ไม่สำเร็จ ระบบคืนค่าเดิมให้แล้ว กรุณาลองใหม่อีกครั้ง`,
+      }));
     } finally {
-      setIsSaving(false);
+      setSavingBillId(null);
     }
   };
-  
 
-  
   // ใช้ Snapshot Listener เมื่อต้องการฟังการเปลี่ยนแปลงแบบ real-time
   const setupRealtimeListener = () => {
     if (!isAuthenticated || !user) return undefined;
@@ -352,16 +323,6 @@ export default function BillHistory() {
     fetchBills(false);
   };
   
-  // ฟังก์ชันคำนวณสถานะบิล
-  const calculateBillStatus = (bill: any) => {
-    if (!bill.participants || bill.participants.length === 0) {
-      return 'pending';
-    }
-    
-    const allPaid = bill.participants.every((p: any) => p.status === 'paid');
-    return allPaid ? 'paid' : 'pending';
-  };
-  
   // ฟังก์ชันแปลงวันที่ (รองรับ Date, Firestore Timestamp และค่าจากแคช)
   const formatDate = (dateInput: Parameters<typeof formatThaiDate>[0]) => formatThaiDate(dateInput);
   
@@ -433,102 +394,97 @@ export default function BillHistory() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {bills.map((bill) => (
-              <Card 
-                key={bill.id} 
-                className={`hover:shadow-md transition-shadow ${
-                  deletingBillId === bill.id 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : isAuthenticated 
-                      ? 'cursor-pointer' 
-                      : 'cursor-not-allowed opacity-90'
-                }`}
+              <Card
+                key={bill.id}
+                role="group"
+                tabIndex={isAuthenticated ? 0 : undefined}
+                aria-label={bill.name || bill.title || 'บิลไม่มีชื่อ'}
+                className={cn(
+                  'transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  deletingBillId === bill.id ? 'cursor-not-allowed opacity-50' : isAuthenticated ? 'cursor-pointer' : ''
+                )}
                 onClick={() => {
-                  if (deletingBillId === bill.id) return; // ป้องกันการคลิกขณะลบ
-                  if (isAuthenticated) {
+                  if (deletingBillId === bill.id || !isAuthenticated) return;
+                  router.push(`/bill/${bill.id}`);
+                }}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget || !isAuthenticated || deletingBillId === bill.id) return;
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
                     router.push(`/bill/${bill.id}`);
-                  } else {
-                    // แสดงข้อความหรือเปิด login modal
-                    alert('กรุณาเข้าสู่ระบบเพื่อดูรายละเอียดบิล');
                   }
                 }}
               >
-                <CardHeader className="pb-3 p-4 sm:p-6">
-                  <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-base sm:text-lg flex-1 truncate pr-2">{bill.name || bill.title || 'บิลไม่มีชื่อ'}</CardTitle>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="flex-1 truncate pr-2 text-base sm:text-lg">{bill.name || bill.title || 'บิลไม่มีชื่อ'}</CardTitle>
+                    <div className="flex flex-shrink-0 items-center gap-2">
                       {bill.categoryId && (
                         <CategoryIcon categoryId={bill.categoryId} size={20} />
                       )}
                       {isAuthenticated && bill.userId === user?.uid && (
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteBill(bill.id, bill.name || bill.title || 'บิลไม่มีชื่อ');
                           }}
-                          className={`p-1 rounded transition-colors ${
-                            deletingBillId === bill.id 
-                              ? 'text-gray-400 cursor-not-allowed' 
-                              : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
-                          }`}
-                          title={deletingBillId === bill.id ? "กำลังลบ..." : "ลบบิล"}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          className="flex h-11 w-11 -m-2 items-center justify-center rounded-[10px] text-muted-foreground transition-colors hover:bg-red-50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-label={`ลบบิล ${bill.name || bill.title || 'บิลไม่มีชื่อ'}`}
                           disabled={deletingBillId === bill.id}
                         >
                           {deletingBillId === bill.id ? (
-                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
                           ) : (
-                            <Trash2 size={16} />
+                            <Trash2 size={16} aria-hidden />
                           )}
                         </button>
                       )}
                     </div>
                   </div>
-                  <div className="text-xs sm:text-sm text-gray-500 mt-1">
+                  <div className="mt-1 text-xs text-muted-foreground sm:text-sm">
                     {formatDate(bill.createdAt)}
                   </div>
                 </CardHeader>
-                <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="flex items-center justify-between text-sm text-gray-600">
+                <CardContent className="space-y-3 p-4 pt-0 sm:p-6 sm:pt-0">
+                  <div className="flex items-center justify-between gap-2 text-sm text-muted-foreground">
                     <div className="flex items-center">
-                      <Users size={14} className="mr-1 sm:mr-2" />
+                      <Users size={14} className="mr-1 sm:mr-2" aria-hidden />
                       <span className="text-xs sm:text-sm">{bill.participants?.length || 0} คน</span>
                     </div>
-                    <div className="font-medium text-sm sm:text-base">
+                    <div className="text-sm font-medium tabular-nums text-foreground sm:text-base">
                       {formatTHB(bill.totalAmount)} บาท
                     </div>
                   </div>
-                </CardContent>
-                <CardFooter className="border-t pt-3 p-4 sm:p-6">
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs sm:text-sm">สถานะ:</span>
-                    {calculateBillStatus(bill) === 'paid' ? (
-                      <span className="text-xs sm:text-sm flex items-center text-green-600">
-                        <CheckCircle2 size={14} className="mr-1" />
-                        ชำระแล้ว
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs sm:text-sm flex items-center text-amber-600">
-                          <Clock size={14} className="mr-1" aria-hidden />
-                          รอชำระ
-                        </span>
-                        {isAuthenticated && bill.userId === user?.uid && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-6 px-2 sm:h-8 sm:px-3"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateAllParticipants(bill.id, 'paid');
-                            }}
-                            disabled={isSaving}
-                          >
-                            {isSaving ? 'กำลังบันทึก...' : 'ชำระทั้งหมด'}
-                          </Button>
-                        )}
-                      </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <BillStatusBadge bill={bill} />
+                    {isAuthenticated && (
+                      <Link
+                        href={`/bill/${bill.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex min-h-11 items-center px-1 text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        ดูบิล
+                      </Link>
                     )}
                   </div>
-                </CardFooter>
+                  <BillPayments
+                    bill={bill}
+                    canToggle={!isAuthenticated || bill.userId === user?.uid}
+                    saving={savingBillId === bill.id}
+                    onToggle={(pid, status) => togglePayment(bill.id, pid, status)}
+                  />
+                  {!isAuthenticated && (
+                    <p className="text-xs text-muted-foreground">ข้อมูลตัวอย่าง การติ๊กจะไม่ถูกบันทึก</p>
+                  )}
+                  {paymentErrors[bill.id] && (
+                    <p role="alert" className="flex items-start gap-1.5 text-sm text-destructive">
+                      <AlertCircle size={16} className="mt-0.5 shrink-0" aria-hidden />
+                      {paymentErrors[bill.id]}
+                    </p>
+                  )}
+                </CardContent>
               </Card>
             ))}
           </div>

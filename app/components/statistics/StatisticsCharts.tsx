@@ -1,6 +1,6 @@
 import { formatTHB } from '@/app/lib/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/Card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { StatisticsData, CategoryStats } from '@/app/hooks/useStatistics';
 
 // ชุดสีกราฟของแบรนด์ (ดู /design) เรียงให้สีติดกันต่างกันชัด
@@ -13,19 +13,19 @@ interface StatisticsChartsProps {
 
 export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
       {/* กราฟแท่งแสดงค่าใช้จ่ายรายเดือน */}
       <Card>
         <CardHeader>
           <CardTitle>ค่าใช้จ่ายรายเดือน</CardTitle>
-          <CardDescription>ยอดรวมค่าใช้จ่ายในแต่ละเดือนที่ผ่านมา</CardDescription>
+          <CardDescription>ยอดรวมในแต่ละเดือน</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={stats.monthlyExpenses}
-                margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                margin={{ top: 10, right: 8, left: 0, bottom: 10 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
@@ -37,8 +37,7 @@ export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps
                     return item ? `เดือน${item.month}` : label;
                   }}
                 />
-                <Legend />
-                <Bar dataKey="value" name="ยอดรวม (บาท)" fill="#146F68" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="value" name="ยอดรวม (บาท)" fill="#146F68" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -48,11 +47,11 @@ export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps
       {/* กราฟวงกลมแสดงค่าใช้จ่ายตามหมวดหมู่ */}
       <Card>
         <CardHeader>
-          <CardTitle>ค่าใช้จ่ายตามหมวดหมู่</CardTitle>
-          <CardDescription>สัดส่วนค่าใช้จ่ายแบ่งตามหมวดหมู่</CardDescription>
+          <CardTitle>ค่าใช้จ่ายตามหมวด</CardTitle>
+          <CardDescription>สัดส่วนแยกตามหมวด</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -89,7 +88,7 @@ export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps
                   className="w-3 h-3 rounded-full mr-2 flex-shrink-0" 
                   style={{ backgroundColor: COLORS[index % COLORS.length] }}
                 ></div>
-                <span className="text-xs sm:text-sm truncate">{entry.name}</span>
+                <span className="truncate text-sm">{entry.name}</span>
               </div>
             ))}
           </div>

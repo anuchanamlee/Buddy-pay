@@ -6,51 +6,42 @@ import { db } from "../../lib/firebase";
 import { Bill, FoodItem } from "../../lib/schema";
 import { calculateSplit } from "../../lib/billCalculator";
 import { PerPersonPromptPayQR, sanitizePromptPayId } from "../../components/PromptPayQR";
-import { formatTHB } from "../../lib/format";
+import { formatTHB, formatThaiDate } from "../../lib/format";
 import { useParams, useRouter } from "next/navigation";
 import { FirebaseProvider, useFirebase } from "../../components/providers/FirebaseWrapper";
 import { useAuthModal } from "../../context/AuthModalContext";
-import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/Card";
 import { Button } from "@/app/components/ui/Button";
-import { CalendarIcon, ArrowLeft, CheckCircle2, XCircle, Save } from "lucide-react";
+import { ReceiptSlip } from "@/app/components/ui/ReceiptSlip";
+import { cn } from "@/lib/utils";
+import { ArrowLeft, CheckCircle2, Clock, Pencil, Save, AlertTriangle } from "lucide-react";
 import { CategoryIcon } from "../../components/CategorySelect";
 
-/**
- * Types
- */
 type BillWithId = Bill & { id: string; splitResults?: any[]; promptPayId?: string };
-type FireTS = { seconds: number; nanoseconds: number };
 
-/**
- * Utils
- */
-const formatCurrency = (n: number) =>
-  (n || 0).toLocaleString("th-TH", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fieldClass =
+  "h-11 w-full rounded-[10px] border border-input bg-card px-3 text-base text-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30";
 
-const isFireTS = (d: unknown): d is FireTS =>
-  typeof d === "object" && !!d && "seconds" in (d as any) && "nanoseconds" in (d as any);
-
-const toDisplayDate = (date: Date | string | FireTS | undefined) => {
-  if (!date) return "-";
-  try {
-    if (typeof date === "object" && Object.keys(date).length === 0) return "ไม่ระบุวันที่";
-    const jsDate = isFireTS(date)
-      ? new Date((date as FireTS).seconds * 1000)
-      : date instanceof Date
-      ? date
-      : new Date(date);
-    if (Number.isNaN(jsDate.getTime())) return "วันที่ไม่ถูกต้อง";
-    return jsDate.toLocaleString("th-TH", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "-";
-  }
-};
+function StateScreen({
+  title,
+  message,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  message: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+      <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+      <p className="mt-2 text-muted-foreground">{message}</p>
+      <Button className="mt-6" onClick={onAction}>
+        {actionLabel}
+      </Button>
+    </div>
+  );
+}
 
 /**
  * Content
@@ -388,429 +379,372 @@ function BillDetailContent() {
    */
   if (loading || (isLoading && user)) {
     return (
-      <div className="container mx-auto px-4 py-12 flex items-center justify-center">
-        <div className="animate-pulse text-center">
-          <div className="h-8 w-8 mx-auto bg-blue-400 rounded-full mb-4 animate-spin" />
-          <div className="h-6 w-32 mx-auto bg-gray-200 rounded mb-2" />
-          <div className="h-4 w-48 mx-auto bg-gray-200 rounded" />
-        </div>
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center" role="status" aria-live="polite">
+        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden />
+        <p className="mt-4 text-muted-foreground">กำลังโหลดบิล</p>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="container mx-auto px-4 py-12 max-w-7xl">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-6">รายละเอียดบิล</h1>
-          <p className="text-muted-foreground mb-6">กรุณาเข้าสู่ระบบเพื่อดูรายละเอียดบิล</p>
-          <Button onClick={openLoginModal}>เข้าสู่ระบบ</Button>
-        </div>
-      </div>
+      <StateScreen
+        title="เข้าสู่ระบบเพื่อดูบิลนี้"
+        message="บิลที่บันทึกไว้เปิดดูได้เฉพาะเจ้าของบิล เข้าสู่ระบบแล้วกลับมาที่หน้านี้อีกครั้ง"
+        actionLabel="เข้าสู่ระบบ"
+        onAction={openLoginModal}
+      />
     );
   }
 
   if (unauthorized) {
     return (
-      <div className="container mx-auto px-4 py-12 max-w-7xl">
-        <div className="text-center">
-          <div className="bg-red-100 text-red-800 p-6 rounded-lg mb-6">
-            <h1 className="text-3xl font-bold mb-3">ไม่มีสิทธิ์เข้าถึง</h1>
-            <p className="mb-0">คุณไม่มีสิทธิ์เข้าถึงข้อมูลบิลนี้</p>
-          </div>
-          <Button onClick={() => router.push("/bill-history")}>กลับไปหน้าประวัติบิล</Button>
-        </div>
-      </div>
+      <StateScreen
+        title="ไม่มีสิทธิ์เปิดบิลนี้"
+        message="บิลนี้เป็นของบัญชีอื่น ถ้าเป็นบิลของคุณ ลองเข้าสู่ระบบด้วยบัญชีที่สร้างบิล"
+        actionLabel="กลับไปประวัติบิล"
+        onAction={() => router.push("/bill-history")}
+      />
     );
   }
 
   if (error || !bill) {
+    const notFound = !error || error.startsWith("ไม่พบ");
     return (
-      <div className="container mx-auto px-4 py-12 max-w-7xl">
-        <div className="text-center">
-          <div className="bg-red-100 text-red-800 p-6 rounded-lg mb-6">
-            <h1 className="text-3xl font-bold mb-3">เกิดข้อผิดพลาด</h1>
-            <p className="mb-0">{error || "ไม่พบข้อมูลบิล"}</p>
+      <StateScreen
+        title={notFound ? "ไม่พบบิลนี้" : "เปิดบิลไม่ได้"}
+        message={
+          notFound
+            ? "บิลอาจถูกลบไปแล้วหรือลิงก์ไม่ถูกต้อง เลือกบิลจากประวัติแทน"
+            : "โหลดข้อมูลไม่สำเร็จ ตรวจอินเทอร์เน็ตแล้วลองอีกครั้ง"
+        }
+        actionLabel={notFound ? "กลับไปประวัติบิล" : "ลองอีกครั้ง"}
+        onAction={notFound ? () => router.push("/bill-history") : fetchBillDetail}
+      />
+    );
+  }
+
+  const participants: any[] = bill.participants || [];
+  const foodItems: any[] = bill.foodItems || [];
+  const itemCount = (pid: string) => foodItems.filter((i) => (i.participants || []).includes(pid)).length;
+  const allPaid = participants.length > 0 && participants.every((p) => p.status === "paid");
+  const showPromptPay = !!sanitizePromptPayId(bill.promptPayId);
+
+  const saveBanner = saveMessage && (
+    <div
+      role={saveMessage.type === "error" ? "alert" : "status"}
+      className={cn(
+        "rounded-xl border px-4 py-3 text-sm",
+        saveMessage.type === "success"
+          ? "border-success-500 bg-success-50 text-success-700"
+          : "border-destructive bg-card text-destructive"
+      )}
+    >
+      {saveMessage.text}
+    </div>
+  );
+
+  /**
+   * VIEW MODE
+   */
+  if (!isEditMode) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
+        <Button variant="ghost" size="sm" className="-ml-3" onClick={() => router.push("/bill-history")}>
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          ประวัติบิล
+        </Button>
+
+        <header>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="min-w-0 break-words text-2xl font-bold text-foreground">{bill.name}</h1>
+            {bill.categoryId && (
+              <span className="flex shrink-0 items-center rounded-full bg-muted px-3 py-1" aria-hidden>
+                <CategoryIcon categoryId={bill.categoryId} size={20} />
+              </span>
+            )}
           </div>
-          <Button onClick={() => router.push("/bill-history")}>กลับไปหน้าประวัติบิล</Button>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatThaiDate(bill.createdAt as any, { withTime: false })}, {participants.length} คน, รวม{" "}
+            <span className="font-semibold tabular-nums text-foreground">{formatTHB(totals.grand)} บาท</span>
+          </p>
+        </header>
+
+        {saveBanner}
+
+        <section aria-labelledby="shares-heading">
+          <h2 id="shares-heading" className="text-lg font-semibold text-foreground">
+            ยอดที่แต่ละคนต้องจ่าย
+          </h2>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {participants.map((p) => {
+              const paid = p.status === "paid";
+              const count = itemCount(p.id);
+              return (
+                <ReceiptSlip
+                  key={p.id}
+                  name={p.name}
+                  amount={participantShares[p.id] || 0}
+                  detail={
+                    bill.splitMethod === "equal"
+                      ? "หารเท่ากัน"
+                      : count > 0
+                      ? `${count} รายการ`
+                      : "ไม่ได้กินรายการไหน"
+                  }
+                  status={paid ? "paid" : "pending"}
+                >
+                  <button
+                    type="button"
+                    onClick={() => updatePaymentStatus(p.id, paid ? "pending" : "paid")}
+                    disabled={isSaving}
+                    aria-label={paid ? `${p.name} จ่ายแล้ว แตะเพื่อยกเลิก` : `${p.name} ยังไม่จ่าย แตะเมื่อได้รับเงินแล้ว`}
+                    className={cn(
+                      "mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium transition-colors disabled:opacity-60",
+                      paid
+                        ? "bg-success-50 text-success-700 hover:bg-success-50/70"
+                        : "bg-warning-50 text-warning-700 hover:bg-warning-50/70"
+                    )}
+                  >
+                    {paid ? <CheckCircle2 className="h-5 w-5" aria-hidden /> : <Clock className="h-5 w-5" aria-hidden />}
+                    {paid ? "จ่ายแล้ว (แตะเพื่อยกเลิก)" : "ยังไม่จ่าย แตะเมื่อได้รับเงิน"}
+                  </button>
+                  <div className="h-3" />
+                </ReceiptSlip>
+              );
+            })}
+          </div>
+        </section>
+
+        {showPromptPay && (
+          <section aria-labelledby="pay-heading">
+            <h2 id="pay-heading" className="text-lg font-semibold text-foreground">
+              ให้เพื่อนสแกนจ่าย
+            </h2>
+            <div className="mt-3 max-w-sm rounded-xl border border-border bg-card p-4">
+              <PerPersonPromptPayQR
+                promptPayId={bill.promptPayId as string}
+                people={participants.map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  amount: participantShares[p.id] || 0,
+                  paid: p.status === "paid",
+                }))}
+              />
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                โอนเข้าพร้อมเพย์ {sanitizePromptPayId(bill.promptPayId)} ตรวจชื่อผู้รับในแอปธนาคารก่อนกดยืนยัน
+              </p>
+            </div>
+          </section>
+        )}
+
+        <section aria-labelledby="breakdown-heading">
+          <h2 id="breakdown-heading" className="text-lg font-semibold text-foreground">
+            ค่าใช้จ่ายทั้งบิล
+          </h2>
+          <dl className="mt-3 space-y-2 rounded-xl border border-border bg-card p-4 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">ค่าอาหาร</dt>
+              <dd className="tabular-nums text-foreground">{formatTHB(totals.food)} บาท</dd>
+            </div>
+            {bill.vat > 0 && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">VAT {bill.vat}%</dt>
+                <dd className="tabular-nums text-foreground">{formatTHB(totals.vatAmt)} บาท</dd>
+              </div>
+            )}
+            {bill.serviceCharge > 0 && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">ค่าบริการ {bill.serviceCharge}%</dt>
+                <dd className="tabular-nums text-foreground">{formatTHB(totals.svcAmt)} บาท</dd>
+              </div>
+            )}
+            {bill.discount > 0 && (
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted-foreground">ส่วนลด</dt>
+                <dd className="tabular-nums text-foreground">-{formatTHB(totals.discount)} บาท</dd>
+              </div>
+            )}
+            <div className="flex justify-between gap-3 border-t border-border pt-2 text-base font-bold">
+              <dt className="text-foreground">ยอดรวม</dt>
+              <dd className="tabular-nums text-foreground">{formatTHB(totals.grand)} บาท</dd>
+            </div>
+          </dl>
+        </section>
+
+        <div className="flex flex-col gap-2 border-t border-border pt-6 sm:flex-row">
+          <Button
+            variant={allPaid ? "outline" : "primary"}
+            onClick={() => updateAllPaymentStatus(allPaid ? "pending" : "paid")}
+            isLoading={isSaving}
+            loadingText="กำลังบันทึก"
+            className="sm:flex-1"
+          >
+            {allPaid ? <Clock className="h-4 w-4" aria-hidden /> : <CheckCircle2 className="h-4 w-4" aria-hidden />}
+            {allPaid ? "ยกเลิกจ่ายครบทุกคน" : "จ่ายครบทุกคน"}
+          </Button>
+          <Button variant="secondary" onClick={handleToggleEditMode} className="sm:flex-1">
+            <Pencil className="h-4 w-4" aria-hidden />
+            แก้ไขบิล
+          </Button>
         </div>
       </div>
     );
   }
 
   /**
-   * UI
+   * EDIT MODE (logic เดิม ปรับสไตล์เป็น token)
    */
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl">
-      <div className="mb-8">
-        <Button variant="outline" className="mb-4 flex items-center" onClick={() => router.push("/bill-history")}>
-          <ArrowLeft size={16} className="mr-2" />
-          กลับไปหน้าประวัติบิล
-        </Button>
+    <div className="mx-auto max-w-2xl space-y-6 px-4 py-8 pb-28">
+      <Button variant="ghost" size="sm" className="-ml-3" onClick={handleToggleEditMode}>
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        ยกเลิกแก้ไข
+      </Button>
 
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">{bill.name}</h1>
-          {bill.categoryId && (
-            <div className="flex items-center px-3 py-1 bg-gray-100 dark:bg-gray-800 rounded-full">
-              <CategoryIcon categoryId={bill.categoryId} size={20} />
-            </div>
-          )}
-        </div>
-        <div className="flex items-center text-gray-500 mt-2">
-          <CalendarIcon size={16} className="mr-1" />
-          <span>{toDisplayDate(bill.createdAt as any)}</span>
-        </div>
+      <header>
+        <h1 className="break-words text-2xl font-bold text-foreground">แก้ไขบิล {bill.name}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          วิธีหาร: {bill.splitMethod === "equal" ? "หารเท่ากันหมด" : "หารตามรายการที่สั่ง"}
+        </p>
+      </header>
 
-        {bill.splitMethod === "itemized" && unassignedParticipants.length > 0 && (
-          <div className="mt-4 p-3 rounded-md bg-yellow-100 text-yellow-700">
+      {saveBanner}
+
+      {bill.splitMethod === "itemized" && unassignedParticipants.length > 0 && (
+        <div role="alert" className="flex gap-2 rounded-xl border border-warning-400 bg-warning-50 px-4 py-3 text-sm text-warning-700">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <p>
             <span className="font-semibold">คำเตือน:</span> มีผู้เข้าร่วมบางคนยังไม่ได้เลือกรายการอาหาร กรุณาเลือกว่าใครกินอะไรบ้าง
-          </div>
-        )}
+          </p>
+        </div>
+      )}
 
-        {saveMessage && (
-          <div
-            className={`mt-4 p-3 rounded-md ${
-              saveMessage.type === "success" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-            }`}
-          >
-            {saveMessage.text}
-          </div>
-        )}
-
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <div
-              className={`flex items-center rounded-full px-3 py-1 text-sm ${
-                bill.status === "paid" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-              }`}
-            >
-              {bill.status === "paid" ? (
+      <section aria-labelledby="items-heading" className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="items-heading" className="text-lg font-semibold text-foreground">รายการอาหาร</h2>
+          <Button variant="outline" size="sm" onClick={handleAddFoodItem}>
+            + เพิ่มเมนูอาหาร
+          </Button>
+        </div>
+        {foodItems.map((item: any) => (
+          <div key={item.id} className="space-y-3 rounded-xl border border-border bg-card p-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_8rem]">
+              <input
+                type="text"
+                value={item.name || ""}
+                onChange={(e) => handleUpdateFoodItem(item.id, "name" as any, e.target.value)}
+                className={fieldClass}
+                placeholder="ชื่อเมนู"
+                aria-label="ชื่อเมนู"
+              />
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={item.price ?? 0}
+                onChange={(e) => handleUpdateFoodItem(item.id, "price" as any, e.target.value)}
+                className={cn(fieldClass, "tabular-nums")}
+                placeholder="ราคา"
+                aria-label="ราคา (บาท)"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {bill.splitMethod === "itemized" && (
                 <>
-                  <CheckCircle2 size={16} className="mr-1" />
-                  <span>ชำระแล้ว</span>
-                </>
-              ) : (
-                <>
-                  <XCircle size={16} className="mr-1" />
-                  <span>รอชำระ</span>
+                  <Button variant="outline" size="sm" onClick={() => handleToggleAllParticipantsForItem(item.id, "all")}>
+                    เลือกทุกคน
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleToggleAllParticipantsForItem(item.id, "none")}>
+                    ล้าง
+                  </Button>
                 </>
               )}
-            </div>
-            <div className="ml-3">
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => updateAllPaymentStatus(bill.status === "paid" ? "pending" : "paid")}
-                disabled={isSaving}
-              >
-                {isSaving ? "กำลังบันทึก..." : bill.status === "paid" ? "เปลี่ยนเป็นรอชำระ" : "เปลี่ยนเป็นชำระแล้ว"}
+              <Button variant="danger" size="sm" className="ml-auto" onClick={() => handleDeleteFoodItem(item.id)}>
+                ลบเมนูนี้
               </Button>
             </div>
+            {bill.splitMethod === "itemized" && (
+              <div className="flex flex-wrap gap-2">
+                {participants.map((p: any) => {
+                  const active = (item.participants || []).includes(p.id);
+                  const per =
+                    active && (item.participants || []).length > 0
+                      ? formatTHB(Number(item.price || 0) / Math.max(1, (item.participants || []).length))
+                      : null;
+                  return (
+                    <button
+                      key={`${item.id}-${p.id}`}
+                      type="button"
+                      onClick={() => handleParticipantToggle(item.id as string, p.id)}
+                      aria-pressed={active}
+                      className={cn(
+                        "inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors",
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground hover:bg-accent"
+                      )}
+                    >
+                      {p.name}
+                      {active && <span className="ml-1 tabular-nums">({per} บาท)</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
-          <div>
-            <Button variant="outline" size="sm" className="text-xs" onClick={handleToggleEditMode}>
-              {isEditMode ? "ยกเลิกแก้ไข" : "แก้ไขบิล"}
+        ))}
+      </section>
+
+      <section aria-labelledby="people-heading" className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="people-heading" className="text-lg font-semibold text-foreground">ผู้ร่วมบิล</h2>
+          <Button variant="outline" size="sm" onClick={handleAddParticipant}>
+            + เพิ่มผู้ร่วมบิล
+          </Button>
+        </div>
+        {participants.map((p: any) => (
+          <div
+            key={p.id}
+            className={cn(
+              "flex items-start gap-3 rounded-xl border bg-card p-3",
+              bill.splitMethod === "itemized" && unassignedParticipants.includes(p.id)
+                ? "border-warning-400 bg-warning-50"
+                : "border-border"
+            )}
+          >
+            <div className="min-w-0 flex-1">
+              <input
+                type="text"
+                value={p.name || ""}
+                onChange={(e) => handleUpdateParticipantName(p.id, e.target.value)}
+                className={fieldClass}
+                placeholder="ชื่อผู้ร่วมบิล"
+                aria-label="ชื่อผู้ร่วมบิล"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                จะคำนวณยอดชำระอัตโนมัติ: <span className="tabular-nums">{formatTHB(participantShares[p.id] || 0)}</span> บาท
+              </p>
+            </div>
+            <Button variant="danger" size="sm" onClick={() => handleRemoveParticipant(p.id)} aria-label={`ลบ ${p.name || "ผู้ร่วมบิล"}`}>
+              ลบ
             </Button>
           </div>
-        </div>
-      </div>
+        ))}
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>รายการอาหาร</span>
-                <span className="text-sm font-normal text-gray-500">
-                  วิธีการหาร: {bill.splitMethod === "equal" ? "หารเท่ากันหมด" : "หารตามรายการที่สั่ง"}
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isEditMode && (
-                <div className="mb-3">
-                  <Button variant="outline" size="sm" onClick={handleAddFoodItem}>
-                    + เพิ่มเมนูอาหาร
-                  </Button>
-                </div>
-              )}
-              <div className="space-y-4">
-                {(bill.foodItems || []).map((item: any) => (
-                  <div key={item.id} className="p-3 border rounded-md">
-                    {!isEditMode && (
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="flex-1">
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {formatTHB(Number(item.price || 0))} บาท
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {bill.splitMethod === "equal" ? (
-                            <div className="text-gray-500 italic text-sm">ทุกคนร่วมจ่ายเท่ากัน</div>
-                          ) : (
-                            <div className="flex flex-wrap justify-end gap-1 mt-1">
-                              {(bill.participants || []).map((p: any) => {
-                                const active = (item.participants || []).includes(p.id);
-                                const per = active
-                                  ? (Number(item.price || 0) / Math.max(1, (item.participants || []).length)).toLocaleString(
-                                      "th-TH",
-                                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                                    )
-                                  : null;
-                                return (
-                                  <span
-                                    key={`${item.id}-${p.id}`}
-                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      active ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"
-                                    }`}
-                                  >
-                                    {p.name}
-                                    {active && <span className="ml-1">({per} บาท)</span>}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {isEditMode && (
-                      <div className="flex flex-col gap-3">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <input
-                            type="text"
-                            value={item.name || ""}
-                            onChange={(e) => handleUpdateFoodItem(item.id, "name" as any, e.target.value)}
-                            className="border rounded px-3 py-2 w-full"
-                            placeholder="ชื่อเมนู"
-                          />
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            step="0.01"
-                            min="0"
-                            value={item.price ?? 0}
-                            onChange={(e) => handleUpdateFoodItem(item.id, "price" as any, e.target.value)}
-                            className="border rounded px-3 py-2 w-full"
-                            placeholder="ราคา"
-                          />
-                          <div className="flex items-center justify-end gap-2">
-                            {bill.splitMethod === "itemized" && (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleToggleAllParticipantsForItem(item.id, "all")}
-                                >
-                                  เลือกทุกคน
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleToggleAllParticipantsForItem(item.id, "none")}
-                                >
-                                  ล้าง
-                                </Button>
-                              </>
-                            )}
-                            <Button variant="danger" size="sm" onClick={() => handleDeleteFoodItem(item.id)}>
-                              ลบเมนูนี้
-                            </Button>
-                          </div>
-                        </div>
-
-                        {bill.splitMethod === "itemized" && (
-                          <div className="flex flex-wrap gap-2">
-                            {(bill.participants || []).map((p: any) => {
-                              const active = (item.participants || []).includes(p.id);
-                              const per =
-                                active && (item.participants || []).length > 0
-                                  ? (Number(item.price || 0) / Math.max(1, (item.participants || []).length)).toLocaleString(
-                                      "th-TH",
-                                      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                                    )
-                                  : null;
-                              return (
-                                <button
-                                  key={`${item.id}-${p.id}`}
-                                  type="button"
-                                  onClick={() => handleParticipantToggle(item.id as string, p.id)}
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                                    active ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                                  }`}
-                                >
-                                  {p.name}
-                                  {active && <span className="ml-1">({per} บาท)</span>}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div>
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span>ผู้ร่วมบิล</span>
-                {isEditMode && (
-                  <Button variant="outline" size="sm" onClick={handleAddParticipant}>
-                    + เพิ่มผู้ร่วมบิล
-                  </Button>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {(bill.participants || []).map((p: any) => (
-                  <div
-                    key={p.id}
-                    className={`flex items-center justify-between border-b pb-2 ${
-                      bill.splitMethod === "itemized" && unassignedParticipants.includes(p.id)
-                        ? "bg-yellow-50 rounded p-2 -mx-2"
-                        : ""
-                    }`}
-                  >
-                    {!isEditMode ? (
-                      <>
-                        <div>
-                          <p className="font-medium">{p.name}</p>
-                          <p className="text-sm text-gray-500">{formatCurrency(participantShares[p.id] || 0)} บาท</p>
-                        </div>
-                        <div>
-                          <Button
-                            size="sm"
-                            variant={p.status === "paid" ? "outline" : "primary"}
-                            className={`text-xs ${p.status === "paid" ? "border-green-500 text-green-600" : ""}`}
-                            onClick={() => updatePaymentStatus(p.id, p.status === "paid" ? "pending" : "paid")}
-                            disabled={isSaving}
-                          >
-                            {p.status === "paid" ? (
-                              <span className="flex items-center">
-                                <CheckCircle2 size={14} className="mr-1" /> ชำระแล้ว
-                              </span>
-                            ) : (
-                              "ชำระเงิน"
-                            )}
-                          </Button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex-1 pr-3">
-                          <input
-                            type="text"
-                            value={p.name || ""}
-                            onChange={(e) => handleUpdateParticipantName(p.id, e.target.value)}
-                            className="border rounded px-3 py-2 w-full"
-                            placeholder="ชื่อผู้ร่วมบิล"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            จะคำนวณยอดชำระอัตโนมัติ: {formatCurrency(participantShares[p.id] || 0)} บาท
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                        <Button variant="danger" size="sm" onClick={() => handleRemoveParticipant(p.id)}>
-                            ลบ
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>รายละเอียดค่าใช้จ่าย</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">ยอดรวมค่าอาหาร</span>
-                  <span className="font-medium">{formatTHB(totals.food)} บาท</span>
-                </div>
-                {bill.vat > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">VAT ({bill.vat}%)</span>
-                    <span className="font-medium">{formatTHB(totals.vatAmt)} บาท</span>
-                  </div>
-                )}
-                {bill.serviceCharge > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">ค่าบริการ ({bill.serviceCharge}%)</span>
-                    <span className="font-medium">{formatTHB(totals.svcAmt)} บาท</span>
-                  </div>
-                )}
-                {bill.discount > 0 && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">ส่วนลด</span>
-                    <span className="font-medium text-green-600">- {formatTHB(totals.discount)} บาท</span>
-                  </div>
-                )}
-                <div className="pt-3 border-t">
-                  <div className="flex justify-between items-center font-bold">
-                    <span>ยอดรวมทั้งสิ้น</span>
-                    <span className="text-lg text-primary">{formatTHB(totals.grand)} บาท</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* QR พร้อมเพย์ของแต่ละคน (เฉพาะบิลที่บันทึกเลขพร้อมเพย์ไว้) */}
-          {!isEditMode && sanitizePromptPayId(bill.promptPayId) && (
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>ให้เพื่อนสแกนจ่าย</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PerPersonPromptPayQR
-                  promptPayId={bill.promptPayId as string}
-                  people={(bill.participants || []).map((p: any) => ({
-                    id: p.id,
-                    name: p.name,
-                    amount: participantShares[p.id] || 0,
-                    paid: p.status === "paid",
-                  }))}
-                />
-                <p className="mt-3 text-center text-xs text-gray-500">พร้อมเพย์ {bill.promptPayId}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      {isEditMode && isEdited && (
-        <div className="sticky bottom-4 left-0 right-0 z-10 flex justify-center">
-          <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur px-4 py-2 rounded-2xl shadow-lg border flex items-center gap-3">
-            <span className="text-sm">มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก</span>
-            <Button variant="primary" onClick={handleSaveChanges} disabled={isSaving}>
-              <Save size={16} className="mr-1" />
-              {isSaving ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}
+      {isEdited && (
+        <div className="fixed inset-x-0 bottom-4 z-10 flex justify-center px-4">
+          <div className="flex w-full max-w-md items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-2 shadow-lg">
+            <span className="text-sm text-foreground">มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก</span>
+            <Button variant="primary" onClick={handleSaveChanges} isLoading={isSaving} loadingText="กำลังบันทึก">
+              <Save className="h-4 w-4" aria-hidden />
+              บันทึกการแก้ไข
             </Button>
           </div>
         </div>
       )}
-
-      <div className="text-center mt-6">
-        <Button variant="outline" className="mr-2" onClick={() => router.push("/bill-history")}>
-          กลับไปหน้าประวัติบิล
-        </Button>
-      </div>
     </div>
   );
 }

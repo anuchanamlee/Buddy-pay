@@ -8,13 +8,16 @@ import { StatisticsCards } from '@/app/components/statistics/StatisticsCards';
 import { StatisticsCharts } from '@/app/components/statistics/StatisticsCharts';
 import { StatisticsDetails } from '@/app/components/statistics/StatisticsDetails';
 import { PendingParticipants } from '@/app/components/statistics/PendingParticipants';
-import { renderSafeAmount, calculatePercentage } from '@/app/utils/statistics';
-import LoginPrompt from '../components/LoginPrompt';
+import { calculatePercentage } from '@/app/utils/statistics';
+import { useAuthModal } from '../context/AuthModalContext';
+import { Badge } from '@/app/components/ui/Badge';
+import { AlertCircle, LogIn } from 'lucide-react';
 import { StatisticsPageSkeleton } from '../components/SkeletonLoaders';
 
 export default function StatisticsPage() {
   const { user, loading } = useFirebase();
   const router = useRouter();
+  const { openLoginModal } = useAuthModal();
   
   const {
     stats,
@@ -24,18 +27,27 @@ export default function StatisticsPage() {
     error
   } = useStatistics(user, loading);
 
-  // Header + Quick actions
-  const Header = ({ subtitle }: { subtitle?: string }) => (
-    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+  const Header = ({ subtitle, sample }: { subtitle?: string; sample?: boolean }) => (
+    <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
-        <h1 className="text-3xl font-bold">สถิติการใช้งาน</h1>
-        {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-3xl font-bold">สถิติการใช้งาน</h1>
+          {sample && <Badge variant="outline">ข้อมูลตัวอย่าง</Badge>}
+        </div>
+        {subtitle && <p className="mt-1 text-muted-foreground">{subtitle}</p>}
       </div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button onClick={() => router.push('/share-bill')}>สร้างบิลใหม่</Button>
         <Button variant="outline" onClick={() => router.push('/bill-history')}>ดูประวัติบิล</Button>
       </div>
     </div>
+  );
+
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <section className="mt-10 first-of-type:mt-0">
+      <h2 className="mb-3 text-xl font-bold">{title}</h2>
+      {children}
+    </section>
   );
 
   // Loading states
@@ -51,61 +63,29 @@ export default function StatisticsPage() {
     return <StatisticsPageSkeleton />;
   }
 
-  // Not logged-in but has mock data
+  // Not logged-in but has mock data: เห็นแค่การ์ดสรุปกับกราฟตัวอย่าง ที่เหลือชวนเข้าสู่ระบบ
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-12 max-w-7xl">
-        <Header />
-        <LoginPrompt message="คุณกำลังดูข้อมูลตัวอย่าง" />
+        <Header sample />
 
         {stats && (
           <>
-            {/* 1) สรุปภาพรวม */}
-            <section className="mt-6">
-              <h2 className="text-xl font-semibold mb-3">
-                ภาพรวม{' '}
-                <span className="ml-1 align-middle rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                  ข้อมูลตัวอย่าง
-                </span>
-              </h2>
-              <StatisticsCards stats={stats} renderSafeAmount={renderSafeAmount} />
-            </section>
+            <Section title="ภาพรวม">
+              <StatisticsCards stats={stats} />
+            </Section>
 
-            {/* 2) ค่าใช้จ่ายตามหมวด */}
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold mb-3">ค่าใช้จ่ายรายเดือนและตามหมวดหมู่</h2>
+            <Section title="ค่าใช้จ่ายรายเดือนและตามหมวด">
               <StatisticsCharts stats={stats} categoryStats={categoryStats} />
-            </section>
+            </Section>
 
-            {/* 3) รายละเอียดเพิ่มเติม */}
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold mb-3">รายละเอียดเพิ่มเติม</h2>
-              <StatisticsDetails
-                stats={stats}
-                popularCategories={popularCategories}
-                renderSafeAmount={renderSafeAmount}
-                calculatePercentage={calculatePercentage}
-              />
-            </section>
-
-            {/* 4) ผู้ร่วมบิลที่รอชำระ (ล่างสุด) */}
-            {!!stats.pendingParticipants?.length && (
-              <section className="mt-10">
-                <h2 className="text-xl font-semibold mb-3">ผู้ร่วมบิลที่รอชำระ</h2>
-                <PendingParticipants
-                  pendingParticipants={stats.pendingParticipants}
-                  totalPendingAmount={stats.totalPendingAmount}
-                />
-              </section>
-            )}
-
-            {/* CTA ล่าง */}
-            <div className="text-center mt-12">
-              <Button onClick={() => router.push('/share-bill')} className="mx-2">
-                สร้างบิลใหม่
-              </Button>
-              <Button variant="outline" onClick={() => router.push('/bill-history')} className="mx-2">
-                ดูประวัติบิล
+            <div className="mt-10 flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <p className="text-muted-foreground">
+                นี่คือข้อมูลตัวอย่าง เข้าสู่ระบบเพื่อดูสถิติบิลของคุณ
+              </p>
+              <Button onClick={openLoginModal} className="shrink-0">
+                <LogIn className="h-4 w-4" aria-hidden />
+                เข้าสู่ระบบ
               </Button>
             </div>
           </>
@@ -119,10 +99,7 @@ export default function StatisticsPage() {
     return (
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         <Header />
-        <div className="text-center">
-          <p className="text-muted-foreground mb-6">ไม่พบข้อมูลสถิติของคุณ</p>
-          <Button onClick={() => router.push('/share-bill')}>สร้างบิลใหม่</Button>
-        </div>
+        <p className="text-center text-muted-foreground">ยังไม่มีสถิติของคุณ สร้างบิลแรกเพื่อเริ่มดูสถิติ</p>
       </div>
     );
   }
@@ -133,54 +110,39 @@ export default function StatisticsPage() {
       <Header />
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-md mb-8">
-          {error}
+        <div
+          role="alert"
+          className="mb-8 flex items-start gap-2 rounded-xl border border-destructive/30 bg-card p-4 text-destructive"
+        >
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* 1) สรุปภาพรวม */}
-      <section>
-        <h2 className="text-xl font-semibold mb-3">ภาพรวม</h2>
-        <StatisticsCards stats={stats} renderSafeAmount={renderSafeAmount} />
-      </section>
+      <Section title="ภาพรวม">
+        <StatisticsCards stats={stats} />
+      </Section>
 
-      {/* 2) ค่าใช้จ่ายตามหมวด */}
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold mb-3">ค่าใช้จ่ายรายเดือนและตามหมวดหมู่</h2>
+      <Section title="ค่าใช้จ่ายรายเดือนและตามหมวด">
         <StatisticsCharts stats={stats} categoryStats={categoryStats} />
-      </section>
+      </Section>
 
-      {/* 3) รายละเอียดเพิ่มเติม */}
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold mb-3">รายละเอียดเพิ่มเติม</h2>
+      <Section title="รายละเอียดเพิ่มเติม">
         <StatisticsDetails
           stats={stats}
           popularCategories={popularCategories}
-          renderSafeAmount={renderSafeAmount}
           calculatePercentage={calculatePercentage}
         />
-      </section>
+      </Section>
 
-      {/* 4) ผู้ร่วมบิลที่รอชำระ (ล่างสุด) */}
       {!!stats.pendingParticipants?.length && (
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold mb-3">ผู้ร่วมบิลที่รอชำระ</h2>
+        <Section title="ผู้ร่วมบิลที่รอจ่าย">
           <PendingParticipants
             pendingParticipants={stats.pendingParticipants}
             totalPendingAmount={stats.totalPendingAmount}
           />
-        </section>
+        </Section>
       )}
-
-      {/* CTA ล่าง */}
-      <div className="text-center mt-12">
-        <Button onClick={() => router.push('/share-bill')} className="mx-2">
-          สร้างบิลใหม่
-        </Button>
-        <Button variant="outline" onClick={() => router.push('/bill-history')} className="mx-2">
-          ดูประวัติบิล
-        </Button>
-      </div>
     </div>
   );
 }
