@@ -1,6 +1,7 @@
 'use client';
 
 import { formatTHB } from '@/app/lib/format';
+import { billShares } from '@/app/lib/billShares';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -78,9 +79,10 @@ function usePendingBills() {
         );
         
         if (pendingParticipants && pendingParticipants.length > 0) {
-          // คำนวณยอดค้างชำระรวม
-          const totalPendingAmount = pendingParticipants.reduce((sum: number, p: any) => 
-            sum + (p.amount || 0), 0
+          // คำนวณยอดค้างชำระรวมจากยอดของแต่ละคน (เดิมอ่าน p.amount ซึ่งไม่มีอยู่จริง ยอดจึงเป็น 0 เสมอ)
+          const shares = billShares(data);
+          const totalPendingAmount = pendingParticipants.reduce((sum: number, p: any) =>
+            sum + (shares.find((r) => r.participant?.id === p.id)?.amount || 0), 0
           );
           
           // สร้างรายชื่อคนที่ค้างชำระ

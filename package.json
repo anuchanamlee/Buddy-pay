@@ -9,7 +9,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-buddypay-rules \"vitest run --config vitest.rules.config.ts\""
+    "test:rules": "firebase emulators:exec --only firestore --project demo-buddypay-rules \"vitest run --config vitest.rules.config.ts\"",
+    "test:e2e": "node e2e/flow.mjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.4",
@@ -51,6 +52,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.27",
     "firebase-tools": "^15.33.0",
+    "playwright": "1.64.0",
     "tailwindcss": "^4",
     "terser-webpack-plugin": "^5.3.14",
     "typescript": "^5.8.2",
