@@ -13,7 +13,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-buddypay-rules';
 
@@ -87,6 +87,31 @@ describe('billActivities', () => {
   it('ผู้ใช้อ่านกิจกรรมบิลของคนอื่นไม่ได้', async () => {
     await seed('billActivities', 'a1', { billId: 'b1', userId: ALICE.uid, action: 'paid' });
     await assertFails(getDocs(collection(asUser(MALLORY), 'billActivities')));
+  });
+});
+
+describe('การลบบัญชี: เจ้าของลบข้อมูลของตัวเองได้ครบ แต่ลบของคนอื่นไม่ได้', () => {
+  beforeEach(async () => {
+    await seed('bills', 'ab1', { userId: ALICE.uid, name: 'ของ alice' });
+    await seed('participantGroups', 'ag1', { userId: ALICE.uid, name: 'กลุ่ม alice' });
+    await seed('billActivities', 'aa1', { userId: ALICE.uid, billId: 'ab1', action: 'paid' });
+  });
+
+  it('เจ้าของค้นหาและลบข้อมูลของตัวเองได้ทุก collection', async () => {
+    const db = asUser(ALICE);
+    for (const name of ['bills', 'participantGroups', 'billActivities']) {
+      const snap = await assertSucceeds(getDocs(query(collection(db, name), where('userId', '==', ALICE.uid))));
+      for (const d of snap.docs) await assertSucceeds(deleteDoc(d.ref));
+    }
+    await assertSucceeds(deleteDoc(doc(db, 'users', ALICE.uid)));
+  });
+
+  it('คนอื่นลบข้อมูลของเจ้าของไม่ได้', async () => {
+    const db = asUser(MALLORY);
+    await assertFails(deleteDoc(doc(db, 'bills', 'ab1')));
+    await assertFails(deleteDoc(doc(db, 'participantGroups', 'ag1')));
+    await assertFails(deleteDoc(doc(db, 'billActivities', 'aa1')));
+    await assertFails(deleteDoc(doc(db, 'users', ALICE.uid)));
   });
 });
 
