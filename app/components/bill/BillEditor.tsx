@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { parseAmount, sanitizeDecimal } from '@/app/lib/numericInput';
 import { ChevronDown, Plus, Trash2, Users, X } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -42,8 +43,14 @@ interface BillEditorProps {
 
 /** แปลงข้อความราคาเป็นตัวเลข รับ "1,250" และ "80.5" ได้ */
 export function parsePrice(text: string): number {
-  const n = Number.parseFloat(text.replace(/,/g, '').trim());
-  return Number.isFinite(n) ? n : Number.NaN;
+  return parseAmount(text);
+}
+
+/** ช่องตัวเลขแบบไม่ควบคุม (defaultValue): ลบตัวอักษรทิ้งทันทีที่พิมพ์หรือวาง */
+function keepAmountOnly(e: React.FormEvent<HTMLInputElement>) {
+  const el = e.currentTarget;
+  const next = sanitizeDecimal(el.value);
+  if (next !== el.value) el.value = next;
 }
 
 const fieldClass =
@@ -237,6 +244,8 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                       id={`price-${item.id}`}
                       defaultValue={String(item.price)}
                       inputMode="decimal"
+                      autoComplete="off"
+                      onInput={keepAmountOnly}
                       onBlur={(e) => {
                         const price = parsePrice(e.target.value);
                         if (price > 0) onDraftChange(updateItem(draft, item.id, { price }));
@@ -339,7 +348,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
             ref={priceRef}
             value={itemPrice}
             onChange={(e) => {
-              setItemPrice(e.target.value);
+              setItemPrice(sanitizeDecimal(e.target.value));
               setPriceError(null);
             }}
             placeholder="ราคา"
@@ -385,6 +394,8 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
               {f.label}
               <input
                 inputMode="decimal"
+                autoComplete="off"
+                onInput={keepAmountOnly}
                 defaultValue={extras[f.key] ? String(extras[f.key]) : ''}
                 placeholder="0"
                 onBlur={(e) => {
@@ -406,7 +417,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
 /** แถบล่างจอ: ยอดรวมกับปุ่มไปหน้าผลลัพธ์ */
 export function BillFooter({ total, missing, onSubmit }: { total: number; missing: string | null; onSubmit: () => void }) {
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
+    <div data-sticky-footer className="sticky bottom-0 z-20 -mx-4 border-t border-border bg-card/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-xl sm:border">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">ยอดรวม</p>

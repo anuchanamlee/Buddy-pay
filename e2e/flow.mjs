@@ -97,8 +97,10 @@ async function newPage(w = 390) {
   ok(await p.locator('text=ใส่ชื่อเพื่อนอีก 1 คน').count() === 1, 'บอกว่าขาดอีก 1 คน');
   await p.keyboard.type('คนเดียว'); await p.keyboard.press('Enter');
   ok(await p.locator('ul[aria-label="รายชื่อคนที่ไป"] li').count() === 1, 'ชื่อซ้ำไม่ถูกเพิ่ม');
-  await p.locator('#item-name').fill('น้ำ'); await p.locator('#item-price').fill('abc'); await p.locator('#item-price').press('Enter');
-  ok(await p.locator('#item-price-error').innerText().then((t) => t.includes('ราคา')), 'ราคาไม่ใช่ตัวเลขแสดงข้อความบอกวิธีแก้');
+  await p.locator('#item-name').fill('น้ำ'); await p.locator('#item-price').fill('abc');
+  ok(await p.locator('#item-price').inputValue() === '', 'ช่องราคาไม่รับตัวอักษร');
+  await p.locator('#item-price').fill('0'); await p.locator('#item-price').press('Enter');
+  ok(await p.locator('#item-price-error').innerText().then((t) => t.includes('ราคา')), 'ราคา 0 แสดงข้อความบอกวิธีแก้');
   await p.locator('#item-price').fill('1,250'); await p.locator('#item-price').press('Enter');
   ok(await p.locator('input[id^="price-"]').first().inputValue() === '1250', 'ราคามีจุลภาค "1,250" อ่านได้');
   await p.locator('#person-name').fill('ก, ข, ค'); await p.locator('#person-name').press('Enter');
@@ -129,6 +131,48 @@ async function newPage(w = 390) {
   await p.getByRole('button', { name: 'ดูยอดของแต่ละคน' }).click();
   const overflow2 = await p.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   ok(overflow2 <= 0, `หน้าผลลัพธ์ไม่ล้นแนวนอนที่ 360px (${overflow2}px)`);
+}
+
+// 6) มือถือ: คีย์บอร์ดเปิดแล้วต้องยังเห็นช่องที่พิมพ์ (จำลองจอหดเหลือ 420px แบบ Android)
+{
+  const { p, ctx } = await newPage(390);
+  for (const n of ['เอ', 'บี']) { await p.keyboard.type(n); await p.keyboard.press('Enter'); }
+  await p.keyboard.press('Enter');
+  for (let i = 1; i <= 6; i++) { await p.keyboard.type(`เมนู ${i}`); await p.keyboard.press('Enter'); await p.keyboard.type('50'); await p.keyboard.press('Enter'); }
+  // ไม่มีคีย์บอร์ด: ช่องพิมพ์ต้องไม่ถูกแถบยอดรวมบัง
+  await p.evaluate(() => window.scrollTo(0, 0));
+  await p.locator('#item-name').evaluate((e) => e.focus({ preventScroll: true }));
+  await p.waitForTimeout(800);
+  const footerTop = (await p.locator('[data-sticky-footer]').boundingBox()).y;
+  const b0 = await p.locator('#item-name').boundingBox();
+  ok(b0.y + b0.height <= footerTop, `ช่องพิมพ์ไม่ถูกแถบยอดรวมบัง (ช่องล่าง ${Math.round(b0.y + b0.height)} ≤ แถบ ${Math.round(footerTop)})`);
+  await p.setViewportSize({ width: 390, height: 420 });
+  await p.waitForTimeout(900);
+  const box = await p.locator('#item-name').boundingBox();
+  ok(box && box.y >= 64 && box.y + box.height <= 420, `คีย์บอร์ดเปิดแล้วยังเห็นช่องพิมพ์ (y=${box && Math.round(box.y)}–${box && Math.round(box.y + box.height)} จากจอสูง 420)`);
+  ok(!(await p.locator('[data-sticky-footer]').isVisible()), 'คีย์บอร์ดเปิดแล้วซ่อนแถบยอดรวมชั่วคราว');
+  await p.locator('#item-name').blur();
+  await p.setViewportSize({ width: 390, height: 844 });
+  await p.waitForTimeout(400);
+  ok(await p.locator('[data-sticky-footer]').isVisible(), 'ปิดคีย์บอร์ดแล้วแถบยอดรวมกลับมา');
+  await ctx.close();
+}
+
+// 7) ช่องตัวเลขพิมพ์ตัวอักษรไม่ได้
+{
+  const { p, ctx } = await newPage(390);
+  await p.locator('#item-price').pressSequentially('abc12.345x');
+  ok(await p.locator('#item-price').inputValue() === '12.34', `ช่องราคาเหลือแต่ตัวเลข ("${await p.locator('#item-price').inputValue()}")`);
+  await p.locator('#item-price').fill('');
+  await p.locator('#item-price').pressSequentially('ห้าสิบ');
+  ok(await p.locator('#item-price').inputValue() === '', 'พิมพ์ตัวหนังสือในช่องราคาแล้วไม่ขึ้นอะไร');
+  await p.getByRole('tab', { name: 'หารด่วน' }).click();
+  await p.keyboard.type('1o0O');
+  ok(await p.locator('input[inputmode="decimal"]').first().inputValue() === '10', 'ช่องยอดรวมหารด่วนรับเฉพาะตัวเลข');
+  await p.getByRole('button', { name: 'ทำ QR ให้เพื่อนสแกนจ่าย' }).click();
+  await p.getByPlaceholder('08x-xxx-xxxx').pressSequentially('08a1-x234');
+  ok(await p.getByPlaceholder('08x-xxx-xxxx').inputValue() === '081-234', 'ช่องพร้อมเพย์รับเฉพาะตัวเลขกับขีด');
+  await ctx.close();
 }
 
 await b.close();

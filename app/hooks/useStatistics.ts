@@ -1,6 +1,17 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { billShares } from '@/app/lib/billShares';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, type QuerySnapshot, type DocumentData } from 'firebase/firestore';
+
+// สถิติคิดจากบิลล่าสุดไม่เกินจำนวนนี้ (เดิมดึงทุกใบทุกครั้งที่เปิดหน้า ค่าอ่าน Firestore โตตามจำนวนบิลไม่มีเพดาน)
+export const STATS_MAX_BILLS = 300;
+// เปิดหน้าสถิติซ้ำภายในเวลานี้ใช้ข้อมูลเดิม ไม่อ่าน Firestore ใหม่ (กดรีเฟรชข้อมูลได้เสมอ)
+const STATS_REUSE_MS = 2 * 60 * 1000;
+let lastStatsFetch: { uid: string; at: number; snapshot: QuerySnapshot<DocumentData> } | null = null;
+
+/** เรียกหลังบันทึก/แก้/ลบบิล ให้หน้าสถิติอ่านข้อมูลใหม่ครั้งถัดไป */
+export function invalidateStatsCache(): void {
+  lastStatsFetch = null;
+}
 import { db } from '@/app/lib/firebase';
 import { Category, getCategoryById, getPopularCategories } from '@/app/lib/categories';
 import { mockBills } from '@/app/lib/mockData';
@@ -414,7 +425,7 @@ export const useStatistics = (user: any, loading: boolean) => {
     }
   }, [getCachedCategory]);
 
-  const fetchStatistics = useCallback(async () => {
+  const fetchStatistics = useCallback(async (force: boolean | unknown = false) => {
     if (!user?.uid) {
       setError('ไม่พบข้อมูลผู้ใช้');
       return;
@@ -428,10 +439,15 @@ export const useStatistics = (user: any, loading: boolean) => {
       const q = query(
         billsRef,
         where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(STATS_MAX_BILLS)
       );
 
-      const querySnapshot = await getDocs(q);
+      const previous = lastStatsFetch;
+      const reusable =
+        force !== true && previous !== null && previous.uid === user.uid && Date.now() - previous.at < STATS_REUSE_MS;
+      const querySnapshot = reusable ? previous.snapshot : await getDocs(q);
+      if (!reusable) lastStatsFetch = { uid: user.uid, at: Date.now(), snapshot: querySnapshot };
       
       if (querySnapshot.empty) {
         setStats({
@@ -588,6 +604,6 @@ export const useStatistics = (user: any, loading: boolean) => {
     categoryStats,
     popularCategories,
     error,
-    refetch: user ? fetchStatistics : createMockStatistics
+    refetch: user ? () => fetchStatistics(true) : createMockStatistics
   };
 }; 

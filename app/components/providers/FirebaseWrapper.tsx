@@ -34,14 +34,6 @@ interface FirebaseContextType {
 
 const FirebaseContext = createContext<FirebaseContextType | null>(null);
 
-// คอมโพเนนต์ Loading สำหรับแสดงระหว่างที่รอ Firebase ทำงาน
-function LoadingComponent() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>
-  );
-}
 
 // สร้าง Provider component
 export function FirebaseProvider({ children }: { children: ReactNode }) {
@@ -181,8 +173,9 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
       }
       return 'user'; // ถ้าไม่พบข้อมูลให้คืนค่าเป็น user
     } catch (error) {
+      // ส่ง error ต่อ ให้ผู้เรียกรู้ว่าอ่านไม่สำเร็จ (จะได้ไม่จำ role ผิดไว้ในแคช)
       console.error('Error getting user role:', error);
-      return 'user';
+      throw error;
     }
   };
 
@@ -197,7 +190,8 @@ export function FirebaseProvider({ children }: { children: ReactNode }) {
   };
 
   // ถ้ากำลังเริ่มต้น ให้แสดง loading
-  if (loading) return <LoadingComponent />;
+  // ไม่บังทั้งหน้าด้วย spinner ระหว่างรอเช็กการล็อกอิน: หน้าเว็บแสดงผลได้ทันที (server render ได้จริง)
+  // หน้าที่ต้องรู้สถานะล็อกอินใช้ `loading` จาก context เอง
 
   const value = {
     app,

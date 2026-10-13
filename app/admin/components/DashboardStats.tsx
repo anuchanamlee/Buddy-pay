@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CreditCard, User, Clock, TrendingUp, Calendar } from 'lucide-react';
-import { collection, query, getDocs, where, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, query, getDocs, where, Timestamp, orderBy, limit, getCountFromServer, getAggregateFromServer, sum, count } from 'firebase/firestore';
 import { db } from '@/app/lib/firebase';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -39,34 +39,19 @@ export default function DashboardStats() {
       try {
         setLoading(true);
         
-        // ดึงจำนวนบิลทั้งหมด
-        const billsQuery = query(collection(db, 'bills'));
-        const billsSnapshot = await getDocs(billsQuery);
-        const totalBills = billsSnapshot.size;
-        
-        // ดึงจำนวนผู้ใช้ที่ active
-        const usersQuery = query(
-          collection(db, 'users'),
-          where('status', '==', 'active')
-        );
-        const usersSnapshot = await getDocs(usersQuery);
-        const totalUsers = usersSnapshot.size;
-        
-        // ดึงจำนวนบิลที่รอชำระ
-        const pendingBillsQuery = query(
-          collection(db, 'bills'),
-          where('status', '==', 'pending')
-        );
-        const pendingBillsSnapshot = await getDocs(pendingBillsQuery);
-        const pendingBills = pendingBillsSnapshot.size;
-        
-        // คำนวณยอดเงินรวมทั้งหมด
-        let totalAmount = 0;
-        billsSnapshot.docs.forEach(doc => {
-          const data = doc.data();
-          totalAmount += parseFloat(data.amount || 0);
-        });
-        
+        // ใช้ aggregation query (นับ/รวมยอดที่ server) คิด 1 read ต่อ 1,000 เอกสาร
+        // เดิมดึงบิลและผู้ใช้ทุกเอกสารมานับในเครื่อง ค่าอ่านโตตามจำนวนข้อมูลทั้งระบบ
+        const billsRef = collection(db, 'bills');
+        const [billsAgg, usersCount, pendingCount] = await Promise.all([
+          getAggregateFromServer(billsRef, { count: count(), total: sum('totalAmount') }),
+          getCountFromServer(query(collection(db, 'users'), where('status', '==', 'active'))),
+          getCountFromServer(query(billsRef, where('status', '==', 'pending'))),
+        ]);
+        const totalBills = Number(billsAgg.data().count) || 0;
+        const totalAmount = Number(billsAgg.data().total) || 0;
+        const totalUsers = usersCount.data().count;
+        const pendingBills = pendingCount.data().count;
+
         // ดึงการชำระเงินล่าสุด
         const recentPaymentsQuery = query(
           collection(db, 'bills'),
@@ -79,8 +64,8 @@ export default function DashboardStats() {
           const data = doc.data();
           return {
             id: doc.id,
-            title: data.title || 'ไม่มีชื่อ',
-            amount: data.amount || 0,
+            title: data.name || data.title || 'ไม่มีชื่อ',
+            amount: data.totalAmount ?? data.amount ?? 0,
             date: formatDate(data.paymentDate),
             owner: data.ownerName || 'ไม่ระบุ'
           };
@@ -104,16 +89,9 @@ export default function DashboardStats() {
               where('createdAt', '<=', Timestamp.fromDate(monthEnd))
             );
             
-            const monthBillsSnapshot = await getDocs(monthBillsQuery);
-            let monthAmount = 0;
-            
-            monthBillsSnapshot.docs.forEach(doc => {
-              const billData = doc.data();
-              if (billData.amount) {
-                monthAmount += parseFloat(billData.amount);
-              }
-            });
-            
+            const monthAgg = await getAggregateFromServer(monthBillsQuery, { total: sum('totalAmount') });
+            const monthAmount = Number(monthAgg.data().total) || 0;
+
             monthlyStats.push({
               month: format(month, 'MMM yyyy', { locale: th }),
               amount: monthAmount

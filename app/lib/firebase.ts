@@ -1,6 +1,12 @@
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  Firestore,
+} from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Firebase configuration
@@ -40,6 +46,21 @@ if (!isFirebaseConfigured && isBrowser) {
 // ตั้งแต่ตอน import ทำให้ build ล้มเหลว ทั้งที่หน้าเว็บไม่ได้ใช้ Firebase ระหว่าง SSR
 // (FirebaseProvider แสดง loading จนกว่า onAuthStateChanged จะทำงานใน browser)
 // ค่าที่ export จะเป็น undefined ในกรณีนี้ โค้ดฝั่ง server ที่ใช้จึงต้องตรวจ `if (!db)` ก่อน
+// เก็บข้อมูล Firestore ไว้ในเครื่อง (IndexedDB) ใช้ร่วมกันทุกแท็บ
+// เปิดหน้าซ้ำภายใน 30 นาที listener จะคิดค่าอ่านเฉพาะเอกสารที่เปลี่ยน ไม่ใช่อ่านใหม่ทั้งหมด
+// และหน้าเว็บแสดงข้อมูลเดิมได้ทันทีก่อนข้อมูลจาก server มาถึง
+function createFirestore(firebaseApp: FirebaseApp): Firestore {
+  if (!isBrowser) return getFirestore(firebaseApp);
+  try {
+    return initializeFirestore(firebaseApp, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    // เบราว์เซอร์ไม่รองรับ IndexedDB (เช่นโหมดส่วนตัวบางตัว) ใช้แบบไม่มีแคชแทน
+    return getFirestore(firebaseApp);
+  }
+}
+
 function initializeFirebase() {
   if (!isFirebaseConfigured) {
     return {
@@ -50,11 +71,12 @@ function initializeFirebase() {
     };
   }
 
-  const firebaseApp = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+  const isFirstInit = getApps().length === 0;
+  const firebaseApp = isFirstInit ? initializeApp(firebaseConfig) : getApp();
   return {
     app: firebaseApp,
     auth: getAuth(firebaseApp),
-    db: getFirestore(firebaseApp),
+    db: isFirstInit ? createFirestore(firebaseApp) : getFirestore(firebaseApp),
     storage: getStorage(firebaseApp),
   };
 }

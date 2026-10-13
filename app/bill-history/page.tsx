@@ -2,6 +2,7 @@
 
 import { formatThaiDate, formatTHB } from '@/app/lib/format';
 import { useState, useEffect, useRef } from 'react';
+import { invalidateStatsCache } from '../hooks/useStatistics';
 import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import LoginPrompt from '../components/LoginPrompt';
@@ -41,7 +42,7 @@ const BILLS_PER_PAGE = 9; // จำนวนบิลต่อหน้า
 export const dynamic = 'force-dynamic';
 
 export default function BillHistory() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
     const router = useRouter();
   // State สำหรับ pagination
@@ -211,6 +212,7 @@ export default function BillHistory() {
         tx.update(ref, payload);
         return { ...latest, ...next };
       });
+      invalidateStatsCache();
       // ใช้ข้อมูลจาก Firestore เป็นหลัก (อาจมีคนอื่นที่ถูกติ๊กจากที่อื่นด้วย)
       const synced = billsRef.current.map((b) => (b.id === billId ? { ...b, participants: fresh.participants, splitResults: fresh.splitResults, status: fresh.status } : b));
       billsRef.current = synced;
@@ -268,6 +270,8 @@ export default function BillHistory() {
   
   // โหลดข้อมูลเมื่อคอมโพเนนต์ถูกโหลด
   useEffect(() => {
+    // รอเช็กการล็อกอินก่อน ไม่อย่างนั้นคนที่ล็อกอินอยู่จะเห็นบิลตัวอย่างแวบหนึ่ง
+    if (authLoading) return;
     // ตัวแปรเก็บสถานะว่า component ยังทำงานอยู่หรือไม่
     let isMounted = true;
     
@@ -307,7 +311,7 @@ export default function BillHistory() {
         unsubscribe();
       }
     };
-  }, [isAuthenticated, user, isRealtime]);
+  }, [authLoading, isAuthenticated, user, isRealtime]);
   
   // ฟังก์ชันโหลดข้อมูลเพิ่มเติม
   const loadMore = () => {
@@ -341,6 +345,7 @@ export default function BillHistory() {
 
       // ลบบิลจาก Firestore
       await deleteDoc(doc(db, 'bills', billId));
+      invalidateStatsCache();
 
       // อัพเดต state โดยลบบิลออกจากรายการ
       setBills(prevBills => prevBills.filter(bill => bill.id !== billId));

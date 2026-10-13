@@ -10,6 +10,8 @@ import { useFirebase } from '../components/providers/FirebaseWrapper';
 import { getErrorMessage, logErrorToAnalytics } from '../lib/errorMessages';
 
 import Cookies from 'js-cookie';
+import { clearIndexedDbPersistence, terminate } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useToast } from './ToastContext';
 
 type AuthContextType = {
@@ -63,7 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (process.env.NODE_ENV === 'development') {
             console.log("Fetching role for user:", user.uid);
           }
-          const role = await getUserRole(user.uid);
+          // ใช้ role ที่เคยอ่านในแท็บนี้ ไม่ต้องอ่าน Firestore ทุกครั้งที่เปลี่ยนหน้า (Rules ยังตรวจสิทธิ์จริงทุกครั้ง)
+          const cacheKey = `userRole:${user.uid}`;
+          const role = sessionStorage.getItem(cacheKey) || (await getUserRole(user.uid));
+          sessionStorage.setItem(cacheKey, role);
           if (process.env.NODE_ENV === 'development') {
             }
           setUserRole(role);
@@ -182,13 +187,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // แสดงการแจ้งเตือน
       showToast('ออกจากระบบเรียบร้อยแล้ว', 'info');
       
-      router.push('/');
-      router.refresh();
-      // ล้าง userRole จาก sessionStorage และ cookies
+      // ล้าง userRole (รวม role ที่แคชไว้ต่อ uid) จาก sessionStorage และ cookies
       sessionStorage.removeItem('userRole');
+      Object.keys(sessionStorage)
+        .filter((k) => k.startsWith('userRole:'))
+        .forEach((k) => sessionStorage.removeItem(k));
       Cookies.remove('firebase-session');
       Cookies.remove('user-role');
       setUserRole(null);
+
+      // ลบข้อมูลบิลที่แคชไว้ในเครื่อง (กันคนที่ใช้เครื่องต่อเห็นข้อมูล) แล้วโหลดหน้าใหม่ให้ Firestore เริ่มใหม่
+      try {
+        await terminate(db);
+        await clearIndexedDbPersistence(db);
+      } catch {
+        // ลบไม่ได้ (เช่นแท็บอื่นยังเปิดอยู่) ข้อมูลยังถูกป้องกันด้วย query ที่กรอง userId
+      }
+      window.location.assign('/');
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
       setError(errorMessage);

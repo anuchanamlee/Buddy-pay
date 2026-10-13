@@ -58,6 +58,8 @@ Browser (Next.js / React)
                                      Cloud Firestore — firestore.rules is the authorization layer
 ```
 
+**Built for the free Spark plan:** a persistent local Firestore cache, a navbar listener that only watches unpaid bills, statistics capped to the latest 300 bills, and server-side count/sum aggregation on the admin dashboard keep reads low.
+
 Because the browser talks to Firestore directly, **Firestore Security Rules are the backend authorization**: deny-by-default, owner-only access to bills and groups, users cannot change their own `role`/`status`, share links can be read by ID but never listed. The rules have their own test suite running on the Firestore emulator.
 
 Key code:
@@ -120,9 +122,9 @@ Import the repo in Vercel, add the same `NEXT_PUBLIC_FIREBASE_*` environment var
 | `npm run build` / `npm start` | Production build / server |
 | `npm run typecheck` | TypeScript, including tests |
 | `npm run lint` | ESLint |
-| `npm test` | Unit tests (Vitest, 87 tests, no Firebase needed) |
+| `npm test` | Unit tests (Vitest, 93 tests, no Firebase needed) |
 | `npm run test:rules` | Firestore rules tests on the emulator (needs Java 21) |
-| `npm run test:e2e` | Playwright user flow (31 checks) against `npm run build && npx next start -p 3100` |
+| `npm run test:e2e` | Playwright user flow (41 checks) against `npm run build && npx next start -p 3100` |
 
 ## Testing and CI
 
@@ -136,7 +138,6 @@ No secrets are needed for CI.
 
 ## Known limitations and roadmap
 
-- Statistics and admin pages read whole collections → use `getCountFromServer` and pagination.
 - The share API writes with the client SDK → move to the Firebase Admin SDK and close client writes in the rules.
 - Middleware checks a client-set cookie (redirect only; data is protected by the rules) → server-issued session cookies.
 - In-memory rate limit per server instance → a shared store such as Upstash Redis.

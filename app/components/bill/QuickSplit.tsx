@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { sanitizeDecimal } from '@/app/lib/numericInput';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { formatTHB } from '@/app/lib/format';
@@ -32,7 +33,7 @@ export function QuickSplit({ onSubmit }: { onSubmit: (total: number, count: numb
         <span className="relative mt-2 block">
           <input
             value={totalText}
-            onChange={(e) => setTotalText(e.target.value)}
+            onChange={(e) => setTotalText(sanitizeDecimal(e.target.value))}
             inputMode="decimal"
             enterKeyHint="go"
             placeholder="0"

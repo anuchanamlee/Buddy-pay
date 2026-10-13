@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { sanitizeDigits } from '@/app/lib/numericInput';
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Copy, Save, Send } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { ReceiptSlip } from '@/app/components/ui/ReceiptSlip';
@@ -221,7 +222,7 @@ export function BillResult({
             พร้อมเพย์ของคนรับเงิน (เบอร์มือถือหรือเลขบัตรประชาชน)
             <input
               value={promptPayId}
-              onChange={(e) => onPromptPayChange(e.target.value)}
+              onChange={(e) => onPromptPayChange(sanitizeDigits(e.target.value))}
               inputMode="numeric"
               autoComplete="tel"
               placeholder="08x-xxx-xxxx"

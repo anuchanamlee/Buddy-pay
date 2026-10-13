@@ -14,6 +14,7 @@ import { useAuth } from '@/app/context/AuthContext';
 
 // Firestore
 import { db } from '@/app/lib/firebase';
+import { invalidateStatsCache } from '@/app/hooks/useStatistics';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface SharedBillData extends BillState {
@@ -77,6 +78,7 @@ export default function SharedBillPage() {
         updatedAt: serverTimestamp(),
       };
       const docRef = await addDoc(collection(db, 'bills'), payload);
+      invalidateStatsCache();
       router.push(`/bill/${docRef.id}`);
     } catch (err) {
       console.error('Error saving bill:', err);

@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { invalidateStatsCache } from './useStatistics';
 import { collection, addDoc, query, orderBy, limit, startAfter, onSnapshot, getDocs, where, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
@@ -426,6 +427,7 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
       
       // บันทึกลง Firestore
       const docRef = await addDoc(collection(db, 'bills'), billData);
+      invalidateStatsCache();
       
       showToast('บันทึกบิลสำเร็จ', 'success');
       

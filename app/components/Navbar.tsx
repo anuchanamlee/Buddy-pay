@@ -19,7 +19,7 @@ import {
 import { useAuthModal } from '../context/AuthModalContext';
 import { useAuth } from '../context/AuthContext';
 import { Menu, Bell, Clock, CheckCircle2 } from 'lucide-react';
-import { collection, query, orderBy, limit, onSnapshot, QueryDocumentSnapshot, DocumentData, where } from 'firebase/firestore';
+import { collection, query, limit, onSnapshot, QueryDocumentSnapshot, DocumentData, where } from 'firebase/firestore';
 
 // สร้าง Nullable version ของ useFirebase - ปรับปรุงเพื่อลด re-render
 function useSafeFirebase() {
@@ -119,12 +119,14 @@ function usePendingBills() {
 
     setLoading(true);
 
-    // ใช้ onSnapshot สำหรับ real-time updates
+    // ฟังแบบ real-time เฉพาะบิลที่ยังเก็บเงินไม่ครบ (status = pending) เดิมฟังบิลล่าสุด 100 ใบทุกครั้งที่เปิดแอป
+    // ทำให้เปลืองโควตาอ่านของ Firestore ตามจำนวนบิลทั้งหมด ไม่ใช่จำนวนบิลที่ค้าง
+    // ใช้ตัวกรองแบบเท่ากับ 2 ฟิลด์ ไม่ต้องสร้าง composite index เพิ่ม
     const billsQuery = query(
       collection(firebase.db, 'bills'),
       where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc'),
-      limit(100)
+      where('status', '==', 'pending'),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(billsQuery, processBills, (error: Error) => {
@@ -144,7 +146,7 @@ function usePendingBills() {
 export default function Navbar() {
   const pathname = usePathname();
   const { openLoginModal, openSignupModal } = useAuthModal();
-  const { user, isAuthenticated, logout, userRole } = useAuth();
+  const { user, isAuthenticated, logout, userRole, loading: authLoading } = useAuth();
   const firebase = useSafeFirebase();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -334,8 +336,10 @@ export default function Navbar() {
             </DropdownMenu>
           )}
           
-          {/* ถ้าล็อกอินแล้ว แสดง Avatar และเมนูผู้ใช้ */}
-          {isAuthenticated ? (
+          {/* ถ้าล็อกอินแล้ว แสดง Avatar และเมนูผู้ใช้ (ระหว่างรอเช็กการล็อกอินแสดงที่ว่างไว้ก่อน ไม่ให้ปุ่มกระพริบ) */}
+          {authLoading ? (
+            <div className="h-8 w-8 rounded-full bg-muted" aria-hidden="true" />
+          ) : isAuthenticated ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Avatar className="cursor-pointer h-8 w-8">
