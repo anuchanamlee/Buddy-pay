@@ -6,12 +6,13 @@ import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { useAuth } from '../context/AuthContext';
 import { Check, AlertCircle, Trash2, AlertTriangle } from 'lucide-react';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, deleteUser } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { db } from '@/app/lib/firebase';
+import { deleteAccountCompletely, getSignInMethod } from '@/app/lib/services/accountDeletion';
 import { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Cookies from 'js-cookie';
 import { PageLoader } from '@/app/components/ui/PageLoader';
 import { LoadingButton } from '@/app/components/ui/LoadingButton';
 
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
@@ -99,41 +101,32 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     setIsDeleting(true);
     setDeleteError(null);
-    
+
     try {
-      if (user && user.email) {
-        // สร้าง credential สำหรับการยืนยันตัวตน
-        const credential = EmailAuthProvider.credential(user.email, deletePassword);
-        
-        // ยืนยันตัวตนก่อนลบบัญชี
-        await reauthenticateWithCredential(user as User, credential);
-        
-        // ลบข้อมูลผู้ใช้จาก Firestore
-        if (user.uid) {
-          const userDocRef = doc(db, 'users', user.uid);
-          await deleteDoc(userDocRef);
-        }
-        
-        // ลบบัญชีผู้ใช้
-        await deleteUser(user as User);
-        
-        // ออกจากระบบและนำทางกลับไปยังหน้าหลัก
-        router.push('/');
-      }
+      // ยืนยันตัวตน → ลบบิล กลุ่ม กิจกรรม และข้อมูลผู้ใช้ทั้งหมด → ลบบัญชี
+      await deleteAccountCompletely(db, user as User, deletePassword || undefined);
+      sessionStorage.removeItem('userRole');
+      Cookies.remove('firebase-session');
+      Cookies.remove('user-role');
+      router.push('/');
     } catch (err: any) {
-      let errorMessage = 'เกิดข้อผิดพลาดในการลบบัญชี';
-      
-      if (err.code === 'auth/wrong-password') {
+      let errorMessage = 'เกิดข้อผิดพลาดในการลบบัญชี กรุณาลองใหม่';
+
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         errorMessage = 'รหัสผ่านไม่ถูกต้อง';
+      } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        errorMessage = 'ยกเลิกการยืนยันตัวตนกับ Google แล้ว บัญชียังไม่ถูกลบ';
+      } else if (err.code === 'auth/popup-blocked') {
+        errorMessage = 'เบราว์เซอร์บล็อกหน้าต่างยืนยันตัวตน กรุณาอนุญาต popup แล้วลองใหม่';
+      } else if (err.code === 'auth/user-mismatch') {
+        errorMessage = 'บัญชี Google ที่เลือกไม่ตรงกับบัญชีที่ล็อกอินอยู่';
       } else if (err.code === 'auth/requires-recent-login') {
-        errorMessage = 'กรุณาเข้าสู่ระบบใหม่เพื่อดำเนินการนี้';
-        // ออกจากระบบและนำทางไปยังหน้าล็อกอิน
-        await logout();
-        router.push('/');
+        errorMessage = 'กรุณาออกจากระบบแล้วเข้าสู่ระบบใหม่ก่อนลบบัญชี';
       }
-      
+
       setDeleteError(errorMessage);
     } finally {
       setIsDeleting(false);
@@ -150,11 +143,15 @@ export default function SettingsPage() {
     );
   }
 
-  // ถ้าไม่ได้ล็อกอิน ให้นำทางไปยังหน้าหลัก
+  // ถ้าไม่ได้ล็อกอิน ให้กลับหน้าแรกพร้อมเปิด modal ล็อกอิน แล้วพากลับมาหน้านี้หลังล็อกอิน
   if (!isAuthenticated) {
-    router.push('/');
+    router.replace('/?login=1&from=/settings');
     return null;
   }
+
+  const signInMethod = user ? getSignInMethod(user as User) : 'other';
+  const usesPassword = signInMethod === 'password';
+  const canConfirmDelete = usesPassword ? !!deletePassword : deleteConfirmText.trim() === 'ลบบัญชี';
 
   return (
     <div className="container max-w-4xl mx-auto px-4 py-8 mt-16">
@@ -194,7 +191,17 @@ export default function SettingsPage() {
         
         {/* คอนเทนต์หลัก */}
         <div className="md:col-span-2 space-y-6">
-          {/* เปลี่ยนรหัสผ่าน */}
+          {/* เปลี่ยนรหัสผ่าน: เฉพาะบัญชีที่ล็อกอินด้วยอีเมลและรหัสผ่าน */}
+          {!usesPassword ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>รหัสผ่าน</CardTitle>
+                <CardDescription>
+                  บัญชีนี้เข้าสู่ระบบด้วย Google จึงไม่มีรหัสผ่านของ BuddyPay จัดการความปลอดภัยได้ที่บัญชี Google ของคุณ
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ) : (
           <Card>
             <CardHeader>
               <CardTitle>เปลี่ยนรหัสผ่าน</CardTitle>
@@ -265,6 +272,7 @@ export default function SettingsPage() {
               </CardFooter>
             </form>
           </Card>
+          )}
           
           {/* ลบบัญชี */}
           <Card className="border-red-200">
@@ -292,7 +300,10 @@ export default function SettingsPage() {
                     <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
                     <div>
                       <p className="font-medium">คำเตือน: การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
-                      <p className="text-sm mt-1">บัญชีและข้อมูลทั้งหมดของคุณจะถูกลบอย่างถาวร กรุณากรอกรหัสผ่านเพื่อยืนยันการลบบัญชี</p>
+                      <p className="text-sm mt-1">
+                        บิล กลุ่มเพื่อน และประวัติทั้งหมดของคุณจะถูกลบอย่างถาวร{' '}
+                        {usesPassword ? 'กรุณากรอกรหัสผ่านเพื่อยืนยัน' : 'พิมพ์คำว่า "ลบบัญชี" แล้วยืนยันตัวตนกับ Google อีกครั้ง'}
+                      </p>
                     </div>
                   </div>
                   
@@ -304,25 +315,37 @@ export default function SettingsPage() {
                   )}
                   
                   <form onSubmit={handleDeleteAccount} className="space-y-4">
-                    <Input
-                      type="password"
-                      label="รหัสผ่าน"
-                      value={deletePassword}
-                      onChange={(e) => setDeletePassword(e.target.value)}
-                      placeholder="กรอกรหัสผ่านเพื่อยืนยัน"
-                      required
-                    />
+                    {usesPassword ? (
+                      <Input
+                        type="password"
+                        label="รหัสผ่าน"
+                        value={deletePassword}
+                        onChange={(e) => setDeletePassword(e.target.value)}
+                        placeholder="กรอกรหัสผ่านเพื่อยืนยัน"
+                        required
+                      />
+                    ) : (
+                      <Input
+                        type="text"
+                        label='พิมพ์ "ลบบัญชี" เพื่อยืนยัน'
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder="ลบบัญชี"
+                        autoComplete="off"
+                        required
+                      />
+                    )}
                     
-                    <div className="flex space-x-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <LoadingButton
                         type="submit"
                         variant="danger"
                         loading={isDeleting}
-                        disabled={!deletePassword}
+                        disabled={!canConfirmDelete}
                         loadingText="กำลังลบบัญชี..."
                         className="bg-red-600 hover:bg-red-700"
                       >
-                        ยืนยันการลบบัญชี
+                        {usesPassword ? 'ยืนยันการลบบัญชี' : 'ยืนยันกับ Google แล้วลบบัญชี'}
                       </LoadingButton>
                       
                       <Button
@@ -331,6 +354,7 @@ export default function SettingsPage() {
                         onClick={() => {
                           setShowDeleteConfirm(false);
                           setDeletePassword('');
+                          setDeleteConfirmText('');
                           setDeleteError(null);
                         }}
                       >

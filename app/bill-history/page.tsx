@@ -1,11 +1,12 @@
 'use client';
 
+import { formatThaiDate, formatTHB } from '@/app/lib/format';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import LoginPrompt from '../components/LoginPrompt';
 import { mockBills } from '../lib/mockData';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/app/components/ui/Card';
-import { Users, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
+import { Users, CheckCircle2, XCircle, Trash2, Receipt, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CategoryIcon } from '../components/CategorySelect';
 
@@ -361,70 +362,8 @@ export default function BillHistory() {
     return allPaid ? 'paid' : 'pending';
   };
   
-  // ฟังก์ชันแปลงวันที่
-  const formatDate = (dateInput: string | Date | any) => {
-    if (!dateInput) return 'ไม่ระบุวันที่';
-    
-    // ตรวจสอบว่าเป็น object ว่างหรือไม่
-    if (typeof dateInput === 'object') {
-      if (Object.keys(dateInput).length === 0) {
-        return 'ไม่ระบุวันที่';
-      }
-      
-      // ตรวจสอบว่าเป็น Firestore timestamp หรือไม่
-      if (dateInput.seconds !== undefined && dateInput.nanoseconds !== undefined) {
-        // แปลง Firestore timestamp เป็น Date object
-        const date = new Date(dateInput.seconds * 1000);
-        return new Intl.DateTimeFormat('th-TH', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(date);
-      }
-      
-      // ถ้าเป็น Date object
-      if (dateInput instanceof Date) {
-        if (isNaN(dateInput.getTime())) {
-          console.error('Invalid Date object:', dateInput);
-          return 'ไม่ระบุวันที่';
-        }
-        return new Intl.DateTimeFormat('th-TH', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(dateInput);
-      }
-    }
-    
-    // ถ้าเป็น string
-    if (typeof dateInput === 'string') {
-      try {
-        const date = new Date(dateInput);
-        if (isNaN(date.getTime())) {
-          console.error('Invalid date string:', dateInput);
-          return 'ไม่ระบุวันที่';
-        }
-        return new Intl.DateTimeFormat('th-TH', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }).format(date);
-      } catch (error) {
-        console.error('Error parsing date string:', error);
-        return 'ไม่ระบุวันที่';
-      }
-    }
-    
-    // กรณีอื่นๆ ที่ไม่สามารถแปลงได้
-    console.error('Unhandled date format:', dateInput, typeof dateInput);
-    return 'ไม่ระบุวันที่';
-  };
+  // ฟังก์ชันแปลงวันที่ (รองรับ Date, Firestore Timestamp และค่าจากแคช)
+  const formatDate = (dateInput: Parameters<typeof formatThaiDate>[0]) => formatThaiDate(dateInput);
   
   // ฟังก์ชันลบบิล
   const deleteBill = async (billId: string, billName: string) => {
@@ -515,7 +454,7 @@ export default function BillHistory() {
               >
                 <CardHeader className="pb-3 p-4 sm:p-6">
                   <div className="flex justify-between items-start gap-2">
-                    <CardTitle className="text-base sm:text-lg flex-1 truncate pr-2">{bill.name}</CardTitle>
+                    <CardTitle className="text-base sm:text-lg flex-1 truncate pr-2">{bill.name || bill.title || 'บิลไม่มีชื่อ'}</CardTitle>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {bill.categoryId && (
                         <CategoryIcon categoryId={bill.categoryId} size={20} />
@@ -524,7 +463,7 @@ export default function BillHistory() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            deleteBill(bill.id, bill.name);
+                            deleteBill(bill.id, bill.name || bill.title || 'บิลไม่มีชื่อ');
                           }}
                           className={`p-1 rounded transition-colors ${
                             deletingBillId === bill.id 
@@ -554,7 +493,7 @@ export default function BillHistory() {
                       <span className="text-xs sm:text-sm">{bill.participants?.length || 0} คน</span>
                     </div>
                     <div className="font-medium text-sm sm:text-base">
-                      {bill.totalAmount?.toLocaleString() || 0} บาท
+                      {formatTHB(bill.totalAmount)} บาท
                     </div>
                   </div>
                 </CardContent>
@@ -612,8 +551,14 @@ export default function BillHistory() {
           )}
         </>
       ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">ไม่พบประวัติบิล</p>
+        <div className="text-center py-12 px-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <Receipt className="mx-auto mb-3 h-10 w-10 text-gray-400" aria-hidden="true" />
+          <p className="font-semibold text-gray-800">ยังไม่มีบิลที่บันทึกไว้</p>
+          <p className="mt-1 text-sm text-gray-500">หารบิลครั้งแรกแล้วกดบันทึก บิลจะมาอยู่ที่นี่ให้ติดตามว่าใครจ่ายแล้วบ้าง</p>
+          <Button className="mt-5" onClick={() => router.push('/share-bill')}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            สร้างบิลใหม่
+          </Button>
         </div>
       )}
 

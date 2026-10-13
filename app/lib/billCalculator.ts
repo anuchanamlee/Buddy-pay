@@ -1,4 +1,5 @@
 import { Bill, Participant } from './schema';
+import { allocateSatang, fromSatang, toSatang } from './money';
 
 // ประเภทข้อมูลสำหรับผลลัพธ์การคำนวณ
 export type SplitResult = {
@@ -72,21 +73,26 @@ function calculateEqualSplit(bill: Bill): SplitResult[] {
   const serviceChargeAmount = afterVatAmount * (bill.serviceCharge / 100); // ค่าบริการคิดจากยอดหลัง VAT
   const finalTotal = afterVatAmount + serviceChargeAmount - bill.discount;
   
-  // หารเท่ากันทุกคน
-  const amountPerPerson = finalTotal / totalParticipants;
-  
+  // หารเป็นสตางค์ ให้ยอดทุกคนรวมกันเท่ายอดบิลพอดี เศษสตางค์ไปอยู่กับคนลำดับแรก
+  // เช่น 100 บาท หาร 3 = 33.34, 33.33, 33.33
+  const shares = allocateSatang(toSatang(Math.max(0, finalTotal)), bill.participants.map(() => 1));
+  const per = (value: number) => parseFloat((value / totalParticipants).toFixed(2));
+
   // สร้างผลลัพธ์สำหรับทุกคน
-  return bill.participants.map(participant => ({
-    participant,
-    amount: parseFloat(amountPerPerson.toFixed(2)),
-    items: [
-      { name: 'ค่าอาหาร', amount: parseFloat((subtotal / totalParticipants).toFixed(2)) },
-      { name: 'VAT', amount: parseFloat((vatAmount / totalParticipants).toFixed(2)) },
-      { name: 'ค่าบริการ', amount: parseFloat((serviceChargeAmount / totalParticipants).toFixed(2)) },
-      { name: 'ส่วนลด', amount: parseFloat((-bill.discount / totalParticipants).toFixed(2)) },
-      { name: 'ยอดรวมที่ต้องจ่าย', amount: parseFloat(amountPerPerson.toFixed(2)) }
-    ]
-  }));
+  return bill.participants.map((participant, index) => {
+    const amount = fromSatang(shares[index]);
+    return {
+      participant,
+      amount,
+      items: [
+        { name: 'ค่าอาหาร', amount: per(subtotal) },
+        { name: 'VAT', amount: per(vatAmount) },
+        { name: 'ค่าบริการ', amount: per(serviceChargeAmount) },
+        { name: 'ส่วนลด', amount: per(-bill.discount) },
+        { name: 'ยอดรวมที่ต้องจ่าย', amount }
+      ]
+    };
+  });
 }
 
 /**
@@ -191,10 +197,14 @@ function calculateItemizedSplit(bill: Bill): SplitResult[] {
     participantCosts.set(p.id, finalAmount);
   });
   
-  // สร้าง SplitResult - ความซับซ้อน O(n)
-  return bill.participants.map(p => ({
+  // แบ่งยอดสุดท้ายเป็นสตางค์ตามสัดส่วนที่คำนวณได้ ให้ผลรวมเท่ายอดบิลพอดี
+  const exactAmounts = bill.participants.map(p => Math.max(0, participantCosts.get(p.id) || 0));
+  const exactTotal = exactAmounts.reduce((a, b) => a + b, 0);
+  const shares = allocateSatang(toSatang(exactTotal), exactAmounts);
+
+  return bill.participants.map((p, index) => ({
     participant: p,
-    amount: parseFloat((participantCosts.get(p.id) || 0).toFixed(2)),
+    amount: fromSatang(shares[index]),
     items: participantItems.get(p.id) || []
   }));
 }

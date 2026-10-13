@@ -6,6 +6,8 @@ import { Mail, Lock, User, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/app/components/ui/Button';
 import { Input } from '@/app/components/ui/Input';
 import { useAuth } from '../context/AuthContext';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '@/app/lib/firebase';
 
 type AuthMode = 'login' | 'signup';
 
@@ -25,6 +27,23 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
   const [error, setError] = useState<string | null>(null);
   
   const { login, signup, loginWithGoogle } = useAuth();
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+
+  // ส่งอีเมลรีเซ็ตรหัสผ่าน ใช้ข้อความเดียวกันทุกกรณีเพื่อไม่บอกว่าอีเมลนี้มีบัญชีหรือไม่
+  const handleForgotPassword = async () => {
+    setError(null);
+    setResetMessage(null);
+    if (!email) {
+      setError('กรอกอีเมลก่อน แล้วกด "ลืมรหัสผ่าน" อีกครั้ง');
+      return;
+    }
+    try {
+      if (auth) await sendPasswordResetEmail(auth, email);
+    } catch {
+      // ไม่แสดงรายละเอียด error เพื่อไม่เปิดเผยว่ามีบัญชีหรือไม่
+    }
+    setResetMessage('ถ้าอีเมลนี้มีบัญชีอยู่ เราได้ส่งลิงก์ตั้งรหัสผ่านใหม่ไปให้แล้ว');
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -222,6 +241,23 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                   />
                 )}
                 
+                {mode === 'login' && (
+                  <div className="-mt-1 text-right">
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      className="text-sm font-medium text-blue-600 hover:underline"
+                    >
+                      ลืมรหัสผ่าน?
+                    </button>
+                  </div>
+                )}
+                {resetMessage && (
+                  <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                    {resetMessage}
+                  </p>
+                )}
+
                 <Button type="submit" className="w-full" isLoading={isLoading}>
                   {mode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
                 </Button>

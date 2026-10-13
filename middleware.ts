@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
   // เส้นทางทั้งหมดที่ต้องการการตรวจสอบสิทธิ์
-  const protectedPaths = ['/dashboard', '/admin', '/profile', '/api/protected'];
+  const protectedPaths = ['/admin', '/profile', '/settings', '/api/protected'];
   const isProtectedPath = protectedPaths.some(path => 
     req.nextUrl.pathname.startsWith(path)
   );
@@ -27,11 +27,11 @@ export async function middleware(req: NextRequest) {
       );
     }
     
-    // ถ้าเป็นหน้าทั่วไป ให้ redirect ไปหน้า login
-    const from = req.nextUrl.pathname;
-    return NextResponse.redirect(
-      new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
-    );
+    // ถ้าเป็นหน้าทั่วไป ให้กลับหน้าแรกพร้อมเปิด modal ล็อกอิน (แอปไม่มีหน้า /login แยก)
+    const loginUrl = new URL('/', req.url);
+    loginUrl.searchParams.set('login', '1');
+    loginUrl.searchParams.set('from', req.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
   }
   
   // ตรวจสอบสิทธิ์สำหรับหน้า admin
@@ -39,9 +39,8 @@ export async function middleware(req: NextRequest) {
     const userRole = req.cookies.get('user-role')?.value;
     
     if (userRole !== 'admin') {
-      return NextResponse.redirect(
-        new URL('/dashboard', req.url)
-      );
+      // แอปไม่มีหน้า /dashboard จึงส่งกลับหน้าแรก
+      return NextResponse.redirect(new URL('/', req.url));
     }
   }
   
@@ -50,8 +49,8 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/dashboard/:path*',
     '/admin/:path*',
+    '/settings/:path*',
     '/profile/:path*',
     '/api/protected/:path*',
   ],

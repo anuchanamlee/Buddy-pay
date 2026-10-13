@@ -1,3 +1,5 @@
+import { formatTHB } from '@/app/lib/format';
+import { allocateSatang, fromSatang, toSatang } from '@/app/lib/money';
 import { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { BillState } from '../../lib/billTypes';
 import { Badge } from '../ui/Badge';
@@ -19,7 +21,11 @@ export default function SplitMethodStep({
   const foodItemCount = state.foodItems.length;
   
   // คำนวณค่าเฉลี่ยต่อคน (สำหรับ equal split)
-  const averagePerPerson = participantCount > 0 ? totalAmount / participantCount : 0;
+  // ใช้การแบ่งแบบสตางค์เดียวกับหน้าผลลัพธ์ ถ้าหารไม่ลงตัวแสดงเป็นช่วง เช่น 33.33–33.34
+  const shares = allocateSatang(toSatang(totalAmount), new Array(participantCount).fill(1)).map(fromSatang);
+  const minShare = shares.length ? Math.min(...shares) : 0;
+  const maxShare = shares.length ? Math.max(...shares) : 0;
+  const perPersonLabel = minShare === maxShare ? formatTHB(maxShare) : `${formatTHB(minShare)}–${formatTHB(maxShare)}`;
 
   return (
     <>
@@ -46,7 +52,7 @@ export default function SplitMethodStep({
           <div className="flex items-center space-x-2">
             <Calculator className="w-4 h-4 text-primary" />
             <span className="text-gray-600">ยอดรวม:</span>
-            <Badge variant="default">{totalAmount.toLocaleString()} บาท</Badge>
+            <Badge variant="default">{formatTHB(totalAmount)} บาท</Badge>
           </div>
         </div>
 
@@ -99,7 +105,7 @@ export default function SplitMethodStep({
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-green-700 font-medium">แต่ละคนจ่าย:</span>
                       <span className="text-green-800 font-bold">
-                        {averagePerPerson.toLocaleString()} บาท
+                        {perPersonLabel} บาท
                       </span>
                     </div>
                   </div>

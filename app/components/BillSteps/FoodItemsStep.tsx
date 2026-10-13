@@ -1,3 +1,4 @@
+import { formatTHB } from '@/app/lib/format';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
@@ -158,7 +159,7 @@ export default function FoodItemsStep({
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-primary">
-                    {summary.subtotal.toLocaleString()} บาท
+                    {formatTHB(summary.subtotal)} บาท
                   </div>
                 </div>
               </div>

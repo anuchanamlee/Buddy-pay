@@ -61,9 +61,8 @@ export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps
                   outerRadius={80}
                   dataKey="value"
                   nameKey="name"
-                  label={({ name, percent }) => 
-                    `${name} ${(percent * 100).toFixed(0)}%`
-                  }
+                  // แสดงแค่เปอร์เซ็นต์ ชื่อหมวดอยู่ใน legend ด้านล่าง (ชื่อยาวถูกตัดบนจอมือถือ)
+                  label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                 >
                   {categoryStats.map((entry, index) => (
                     <Cell 

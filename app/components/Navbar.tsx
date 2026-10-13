@@ -1,5 +1,6 @@
 'use client';
 
+import { formatTHB } from '@/app/lib/format';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -289,9 +290,9 @@ export default function Navbar() {
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {bill.participantName ? (
-                                  <>ค้างชำระ: {bill.participantName} ฿{bill.amountOwed?.toLocaleString()}</>
+                                  <>ค้างชำระ: {bill.participantName} ฿{formatTHB(bill.amountOwed)}</>
                                 ) : (
-                                  <>ยอดรวม ฿{bill.totalAmount.toLocaleString()}</>
+                                  <>ยอดรวม ฿{formatTHB(bill.totalAmount)}</>
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
