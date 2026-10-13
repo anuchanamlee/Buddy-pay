@@ -75,6 +75,16 @@ export default function ShareBillPage() {
       setView(saved.view);
       setPendingSave(!!saved.pendingSave);
     }
+    // เปิดจากทางลัดบนไอคอนแอป เช่น /share-bill?mode=quick ให้ไปหน้านั้นทันที
+    const params = new URLSearchParams(window.location.search);
+    const wanted = params.get('mode');
+    if (wanted === 'quick' || wanted === 'items') {
+      setMode(wanted);
+      setView('edit');
+    }
+    if (params.has('mode') || params.has('source')) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
     const pp = loadSavedPromptPay();
     if (pp) setPromptPayId(pp);
     setReady(true);

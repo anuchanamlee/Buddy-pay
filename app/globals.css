@@ -184,6 +184,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Microsoft Edge ใส่ปุ่มตาดูรหัสผ่านของตัวเองเพิ่มในช่องรหัสผ่าน ซ้อนกับปุ่มตาของแอป จึงซ่อนของเบราว์เซอร์ไว้ ใช้ของแอปอันเดียว */
+  input[type='password']::-ms-reveal,
+  input[type='password']::-ms-clear {
+    display: none;
+  }
   /* เวลาเบราว์เซอร์เลื่อนไปหาช่องที่กำลังพิมพ์ เว้นที่ให้ navbar ด้านบนและแถบยอดรวมด้านล่าง */
   html {
     scroll-padding-top: 5rem;

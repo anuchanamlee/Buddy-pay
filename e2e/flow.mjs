@@ -175,6 +175,46 @@ async function newPage(w = 390) {
   await ctx.close();
 }
 
+// 8) ปุ่มเปิด/ปิดดูรหัสผ่านในหน้าเข้าสู่ระบบ
+{
+  const ctx = await b.newContext({ viewport: { width: 1280, height: 800 } });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  await p.getByRole('button', { name: 'เข้าสู่ระบบ' }).first().click();
+  const pw = p.locator('input[autocomplete="current-password"]');
+  await pw.fill('secret123');
+  const toggle = p.getByRole('button', { name: 'แสดงรหัสผ่าน' });
+  await p.waitForTimeout(500); // รอแอนิเมชันเปิดโมดัลจบ
+  const tb = await toggle.boundingBox();
+  ok(tb && tb.width >= 44 && tb.height >= 44, `ปุ่มดูรหัสผ่านกดง่าย (${tb && Math.round(tb.width)}x${tb && Math.round(tb.height)})`);
+  await toggle.click();
+  ok(await pw.getAttribute('type') === 'text' && await pw.inputValue() === 'secret123', 'กดปุ่มตาแล้วเห็นรหัสผ่านและค่าไม่เปลี่ยน');
+  ok(await p.getByRole('button', { name: 'ซ่อนรหัสผ่าน' }).getAttribute('aria-pressed') === 'true', 'ปุ่มตาเปลี่ยนเป็น "ซ่อนรหัสผ่าน" (aria-pressed)');
+  await p.getByRole('button', { name: 'ซ่อนรหัสผ่าน' }).click();
+  ok(await pw.getAttribute('type') === 'password' && await pw.inputValue() === 'secret123', 'กดอีกครั้งแล้วกลับเป็นจุด ค่าไม่เปลี่ยน');
+  await ctx.close();
+}
+
+// 9) ใช้บนมือถือ: manifest, ทางลัด, หน้าติดตั้ง, ไอคอนหารด่วน, service worker
+{
+  const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const p = await ctx.newPage();
+  const manifest = await (await p.request.get(`${BASE}/manifest.json`)).json();
+  ok(manifest.start_url.startsWith('/share-bill') && manifest.display === 'standalone', 'manifest เปิดเต็มจอและเข้าหน้าหารบิล');
+  ok(manifest.shortcuts?.map((x) => x.name).join(',') === 'หารด่วน,ใส่บิล,ใครยังค้าง', 'manifest มีทางลัด 3 อัน');
+  await p.goto(`${BASE}/share-bill?mode=quick`, { waitUntil: 'networkidle' });
+  ok(await p.getByRole('tab', { name: 'หารด่วน' }).getAttribute('aria-selected') === 'true', 'ทางลัด ?mode=quick เปิดหน้าหารด่วน');
+  ok(!p.url().includes('mode='), 'ล้าง ?mode ออกจาก URL หลังเปิด');
+  ok(await p.evaluate(async () => !!(await navigator.serviceWorker.getRegistration('/'))), 'ลงทะเบียน service worker แล้ว');
+  await p.goto(`${BASE}/install`, { waitUntil: 'networkidle' });
+  ok(await p.getByRole('heading', { name: 'ใช้ BuddyPay บนมือถือ' }).count() === 1, 'หน้า /install เปิดได้');
+  await p.goto(`${BASE}/quick`, { waitUntil: 'networkidle' });
+  ok(await p.locator('link[rel="manifest"]').getAttribute('href') === '/manifest-quick.json', 'หน้า /quick ใช้ manifest ของไอคอนหารด่วน');
+  const cron = await p.request.get(`${BASE}/api/cron/reminders`);
+  ok(cron.status() === 503 || cron.status() === 401, `cron แจ้งเตือนไม่ทำงานถ้าไม่ได้ตั้งค่าหรือไม่มีรหัส (${cron.status()})`);
+  await ctx.close();
+}
+
 await b.close();
 console.log(failures === 0 ? '\nALL PASSED' : `\n${failures} FAILED`);
 process.exit(failures ? 1 : 0);

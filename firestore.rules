@@ -220,6 +220,25 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid;
     }
     
+    // การสมัครรับแจ้งเตือนทวงเงิน (Web Push) ของแต่ละเครื่อง
+    // เจ้าของสร้าง/อ่าน/ลบของตัวเองได้ ส่วน server ส่งแจ้งเตือนด้วย Admin SDK (ไม่ผ่าน Rules)
+    match /pushSubscriptions/{subId} {
+      function isValidSubscription(data) {
+        return data.keys().hasOnly(['userId', 'endpoint', 'keys', 'createdAt', 'userAgent']) &&
+          data.userId == request.auth.uid &&
+          data.endpoint is string && data.endpoint.size() > 0 && data.endpoint.size() <= 1000 &&
+          data.endpoint.matches('^https://.*') &&
+          data.keys is map && data.keys.keys().hasOnly(['p256dh', 'auth']) &&
+          data.keys.p256dh is string && data.keys.p256dh.size() <= 200 &&
+          data.keys.auth is string && data.keys.auth.size() <= 100 &&
+          (!('userAgent' in data) || (data.userAgent is string && data.userAgent.size() <= 300));
+      }
+      allow read, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && subId.matches('^[0-9a-f]{64}$') && isValidSubscription(request.resource.data);
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
+        isValidSubscription(request.resource.data);
+    }
+
     // Activity logs collection
     // บันทึกการกระทำของ admin: อ่าน/เขียนได้เฉพาะ admin (เดิมผู้ใช้ทุกคนอ่านและปลอมได้)
     match /activityLogs/{logId} {

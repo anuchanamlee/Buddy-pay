@@ -29,6 +29,13 @@ export const metadata: Metadata = {
   keywords: ['บิล', 'แชร์บิล', 'แบ่งบิล', 'อาหาร', 'คำนวณบิล'],
   icons: {
     icon: '/icon-192x192.png',
+    apple: '/icon-192x192.png',
+  },
+  // iPhone: เพิ่มลงหน้าจอโฮมแล้วเปิดเต็มจอเหมือนแอป
+  appleWebApp: {
+    capable: true,
+    title: 'BuddyPay',
+    statusBarStyle: 'default',
   },
   // เพิ่มสำหรับ PWA
   manifest: '/manifest.json',

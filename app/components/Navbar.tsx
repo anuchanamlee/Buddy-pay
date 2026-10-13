@@ -1,6 +1,8 @@
 'use client';
 
 import { formatTHB } from '@/app/lib/format';
+import { summarizePending } from '@/app/lib/reminders';
+import { updateAppBadge } from '@/app/lib/pwa';
 import { billShares } from '@/app/lib/billShares';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
@@ -56,7 +58,7 @@ function usePendingBills() {
   const [pendingBills, setPendingBills] = useState<PendingBill[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const firebase = useSafeFirebase();
 
   // ใช้ useCallback เพื่อ cache ฟังก์ชัน
@@ -105,6 +107,8 @@ function usePendingBills() {
       
       setPendingBills(sortedBills);
       setPendingCount(count);
+      // ตัวเลขบนไอคอนแอปบนหน้าจอโฮม = จำนวนคนที่ยังค้างจ่าย (ไม่รองรับก็ไม่ทำอะไร)
+      updateAppBadge(summarizePending(snapshot.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data())).pendingCount);
       setLoading(false);
     } catch (error) {
       console.error('Error processing pending bills:', error);
@@ -114,6 +118,7 @@ function usePendingBills() {
 
   useEffect(() => {
     if (!isAuthenticated || !user || !firebase.db) {
+      if (!authLoading) updateAppBadge(0);
       return;
     }
 
@@ -138,7 +143,7 @@ function usePendingBills() {
     return () => {
       unsubscribe();
     };
-  }, [isAuthenticated, user, firebase.db, processBills]);
+  }, [authLoading, isAuthenticated, user, firebase.db, processBills]);
 
   return { pendingBills, pendingCount, loading };
 }
@@ -170,6 +175,7 @@ export default function Navbar() {
     { href: '/share-bill', label: 'แชร์บิล' },
     { href: '/bill-history', label: 'ประวัติบิล' },
     { href: '/statistics', label: 'สถิติ' },
+    { href: '/install', label: 'ใช้บนมือถือ' },
   ];
 
   // ฟังก์ชันสำหรับจัดรูปแบบวันที่
