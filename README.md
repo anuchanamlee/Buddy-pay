@@ -133,9 +133,9 @@ Import the repo in Vercel, add the same `NEXT_PUBLIC_FIREBASE_*` environment var
 | `npm run build` / `npm start` | Production build / server |
 | `npm run typecheck` | TypeScript, including tests |
 | `npm run lint` | ESLint |
-| `npm test` | Unit tests (Vitest, 93 tests, no Firebase needed) |
+| `npm test` | Unit tests (Vitest, 98 tests, no Firebase needed) |
 | `npm run test:rules` | Firestore rules tests on the emulator (needs Java 21) |
-| `npm run test:e2e` | Playwright user flow (41 checks) against `npm run build && npx next start -p 3100` |
+| `npm run test:e2e` | Playwright user flow (52 checks) against `npm run build && npx next start -p 3100` |
 
 ## Testing and CI
 
