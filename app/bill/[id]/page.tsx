@@ -317,6 +317,15 @@ function BillDetailContent() {
 
   const handleSaveChanges = useCallback(async () => {
     if (!bill) return;
+    // รายการที่ไม่มีคนกินจะไม่ถูกนับในยอดของใคร ต้องเลือกคนกินก่อนบันทึก
+    const ids = new Set((bill.participants || []).map((p) => p.id));
+    const orphan = bill.splitMethod === "itemized"
+      ? (bill.foodItems || []).find((it) => !(it.participants || []).some((pid) => ids.has(pid)))
+      : undefined;
+    if (orphan) {
+      setSaveMessage({ type: "error", text: `เลือกคนกิน "${orphan.name}" อย่างน้อย 1 คนก่อนบันทึก` });
+      return;
+    }
     try {
       setIsSaving(true);
       setSaveMessage(null);

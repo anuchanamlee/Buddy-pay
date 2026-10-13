@@ -149,7 +149,14 @@ export default function ShareBillPage() {
         }
       }
     }, 2000);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.clearTimeout(t);
+      // ออกจากหน้าก่อนครบ 2 วินาทีโดยยังไม่ได้ล็อกอิน: ยกเลิกการบันทึกที่ค้างไว้ทันที
+      if (!authRef.current) {
+        const saved = loadSessionDraft();
+        if (saved?.pendingSave) saveSessionDraft({ ...saved, pendingSave: false });
+      }
+    };
   }, [isAuthModalOpen, pendingSave]);
 
   const missing = whatIsMissing(draft);
@@ -175,7 +182,7 @@ export default function ShareBillPage() {
                     aria-selected={mode === t.id}
                     onClick={() => setMode(t.id)}
                     className={cn(
-                      'min-h-[40px] rounded-full px-4 text-sm font-semibold transition-colors',
+                      'min-h-[44px] rounded-full px-4 text-sm font-semibold transition-colors',
                       mode === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >

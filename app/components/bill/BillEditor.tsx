@@ -9,6 +9,7 @@ import {
   addItem,
   addPerson,
   isEveryone,
+  MAX_ITEMS,
   MAX_PEOPLE,
   removeItem,
   removePerson,
@@ -132,7 +133,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                 <button
                   type="button"
                   onClick={() => onDraftChange(removePerson(draft, p.id))}
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"
                   aria-label={`เอา ${p.name} ออก`}
                 >
                   <X className="h-4 w-4" aria-hidden />
@@ -191,7 +192,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
         {onSaveGroup && people.length >= 2 && (
           <button
             type="button"
-            className="mt-2 text-sm font-medium text-primary hover:underline"
+            className="mt-1 inline-flex min-h-[44px] items-center text-sm font-medium text-primary hover:underline"
             onClick={() => {
               const name = window.prompt('ตั้งชื่อกลุ่ม เช่น เพื่อนที่ทำงาน');
               if (name && name.trim()) onSaveGroup(name.trim());
@@ -352,6 +353,9 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
           <Button type="submit" variant="secondary" aria-label="เพิ่มรายการ" disabled={!itemPrice.trim()}>
             <Plus className="h-5 w-5" aria-hidden />
           </Button>
+          {draft.foodItems.length >= MAX_ITEMS && (
+            <p className="col-span-3 text-sm text-warning-700">ใส่ได้สูงสุด {MAX_ITEMS} รายการต่อบิล</p>
+          )}
           {priceError && (
             <p id="item-price-error" role="alert" className="col-span-3 text-sm text-destructive">
               {priceError}

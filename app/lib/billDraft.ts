@@ -14,6 +14,7 @@ export const MIN_PEOPLE = 2;
 /** ต้องตรงกับขีดจำกัดของลิงก์แชร์ใน app/lib/share/schema.ts */
 export const MAX_PEOPLE = 50;
 export const MAX_NAME_CHARS = 200;
+export const MAX_ITEMS = 200;
 
 const ids = (people: Participant[]) => people.map((p) => p.id);
 
@@ -61,6 +62,7 @@ export function renamePerson(draft: BillDraft, personId: string, rawName: string
 /** เพิ่มรายการ: ทุกคนกินเป็นค่าเริ่มต้น ไม่ใส่ชื่อก็ได้ (ตั้งเป็น "รายการ n") ราคาต้องมากกว่า 0 */
 export function addItem(draft: BillDraft, rawName: string, price: number, id: string = uuidv4()): BillDraft {
   if (!Number.isFinite(price) || price <= 0) return draft;
+  if (draft.foodItems.length >= MAX_ITEMS) return draft;
   const name = (rawName.trim() || `รายการ ${draft.foodItems.length + 1}`).slice(0, MAX_NAME_CHARS);
   const item: FoodItem = { id, name, price: Math.round(price * 100) / 100, participants: ids(draft.participants) };
   return { ...draft, foodItems: [...draft.foodItems, item] };
