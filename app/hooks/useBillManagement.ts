@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { collection, addDoc, query, orderBy, limit, startAfter, onSnapshot, getDocs, where, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -9,6 +9,7 @@ import localforage from 'localforage';
 import { useQueryClient } from '@tanstack/react-query';
 import { FirestoreBill, BillState } from '../lib/billTypes';
 import { calculateSplitMemoized as calculateSplit } from '../lib/billCalculator';
+import { fromSatang, toSatang } from '../lib/money';
 import { FoodItem, Participant, Bill } from '../lib/schema';
 import { ParticipantGroup } from '../lib/types/participantGroup';
 import { getParticipantGroups, saveParticipantGroup as saveGroup } from '../lib/services/participantGroupService';
@@ -506,23 +507,10 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
   const calculatedResults = useMemo(() => {
     // ตรวจสอบว่าข้อมูลพร้อมสำหรับการคำนวณหรือไม่
     if (state.participants.length === 0) return [];
-    
-    // คำนวณยอดรวมทั้งหมด
-    const subtotal = state.foodItems.reduce((sum, item) => sum + item.price, 0);
-    
-    // คำนวณ VAT
-    const vatAmount = subtotal * (state.vat / 100);
-    
-    // คำนวณค่าบริการ
-    const serviceChargeAmount = subtotal * (state.serviceCharge / 100);
-    
-    // คำนวณยอดรวมสุดท้าย (รวม VAT, ค่าบริการ, หักส่วนลด)
-    const calculatedTotal = subtotal + vatAmount + serviceChargeAmount - state.discount;
-    
-    // สร้าง object สำหรับการคำนวณตามรูปแบบที่ calculateSplit คาดหวัง
+
     const billData = {
       name: state.billName,
-      totalAmount: calculatedTotal,
+      totalAmount: 0,
       foodItems: state.foodItems,
       participants: state.participants,
       vat: state.vat,
@@ -533,13 +521,21 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
       categoryId: state.categoryId,
       status: 'pending' as const,
     };
-    
-    // อัพเดต totalAmount ในสถานะ
-    dispatch({ type: 'SET_TOTAL_AMOUNT', payload: calculatedTotal });
-    
-    // คำนวณส่วนแบ่งค่าอาหาร
+
     return calculateSplit(billData as Bill);
-  }, [state.foodItems, state.participants, state.vat, state.discount, state.serviceCharge, state.splitMethod, state.billName, state.categoryId, dispatch]);
+  }, [state.foodItems, state.participants, state.vat, state.discount, state.serviceCharge, state.splitMethod, state.billName, state.categoryId]);
+
+  // ยอดรวมของบิล = ผลรวมยอดของทุกคน (คิดเป็นสตางค์) จึงตรงกับที่แต่ละคนจ่ายพอดี
+  // เดิมคิดค่าบริการจากค่าอาหารแทนยอดหลัง VAT ยอดรวมจึงไม่ตรงเมื่อมีทั้ง VAT และค่าบริการ
+  const billTotal = useMemo(
+    () => fromSatang(calculatedResults.reduce((sum, r) => sum + toSatang(r.amount), 0)),
+    [calculatedResults],
+  );
+  useEffect(() => {
+    if (state.totalAmount !== billTotal) {
+      dispatch({ type: 'SET_TOTAL_AMOUNT', payload: billTotal });
+    }
+  }, [billTotal, state.totalAmount, dispatch]);
 
   return {
     promptPayId,
