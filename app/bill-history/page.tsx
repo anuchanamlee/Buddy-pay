@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import LoginPrompt from '../components/LoginPrompt';
 import { mockBills } from '../lib/mockData';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/app/components/ui/Card';
-import { Users, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
+import { Users, CheckCircle2, XCircle, Trash2, Receipt, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CategoryIcon } from '../components/CategorySelect';
 
@@ -551,8 +551,14 @@ export default function BillHistory() {
           )}
         </>
       ) : (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-500">ไม่พบประวัติบิล</p>
+        <div className="text-center py-12 px-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <Receipt className="mx-auto mb-3 h-10 w-10 text-gray-400" aria-hidden="true" />
+          <p className="font-semibold text-gray-800">ยังไม่มีบิลที่บันทึกไว้</p>
+          <p className="mt-1 text-sm text-gray-500">หารบิลครั้งแรกแล้วกดบันทึก บิลจะมาอยู่ที่นี่ให้ติดตามว่าใครจ่ายแล้วบ้าง</p>
+          <Button className="mt-5" onClick={() => router.push('/share-bill')}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            สร้างบิลใหม่
+          </Button>
         </div>
       )}
 
