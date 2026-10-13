@@ -11,6 +11,9 @@ export interface BillDraft {
 }
 
 export const MIN_PEOPLE = 2;
+/** ต้องตรงกับขีดจำกัดของลิงก์แชร์ใน app/lib/share/schema.ts */
+export const MAX_PEOPLE = 50;
+export const MAX_NAME_CHARS = 200;
 
 const ids = (people: Participant[]) => people.map((p) => p.id);
 
@@ -21,14 +24,18 @@ export function isEveryone(item: FoodItem, people: Participant[]): boolean {
 
 /** เพิ่มคน: ชื่อว่างหรือซ้ำจะไม่ถูกเพิ่ม และคนใหม่เข้าไปในทุกรายการที่ "ทุกคนกิน" */
 export function addPerson(draft: BillDraft, rawName: string, id: string = uuidv4()): BillDraft {
-  const name = rawName.trim();
+  const name = rawName.trim().slice(0, MAX_NAME_CHARS);
   if (!name) return draft;
+  if (draft.participants.length >= MAX_PEOPLE) return draft;
   if (draft.participants.some((p) => p.name === name)) return draft;
   const person: Participant = { id, name, status: 'pending' };
   return {
     participants: [...draft.participants, person],
+    // รายการที่ยังไม่มีคนกิน (เช่นใส่รายการก่อนใส่ชื่อ) ก็นับเป็น "ทุกคนกิน" ด้วย ไม่อย่างนั้นราคาจะหายจากบิล
     foodItems: draft.foodItems.map((item) =>
-      isEveryone(item, draft.participants) ? { ...item, participants: [...item.participants, id] } : item,
+      item.participants.length === 0 || isEveryone(item, draft.participants)
+        ? { ...item, participants: [...item.participants, id] }
+        : item,
     ),
   };
 }
@@ -54,7 +61,7 @@ export function renamePerson(draft: BillDraft, personId: string, rawName: string
 /** เพิ่มรายการ: ทุกคนกินเป็นค่าเริ่มต้น ไม่ใส่ชื่อก็ได้ (ตั้งเป็น "รายการ n") ราคาต้องมากกว่า 0 */
 export function addItem(draft: BillDraft, rawName: string, price: number, id: string = uuidv4()): BillDraft {
   if (!Number.isFinite(price) || price <= 0) return draft;
-  const name = rawName.trim() || `รายการ ${draft.foodItems.length + 1}`;
+  const name = (rawName.trim() || `รายการ ${draft.foodItems.length + 1}`).slice(0, MAX_NAME_CHARS);
   const item: FoodItem = { id, name, price: Math.round(price * 100) / 100, participants: ids(draft.participants) };
   return { ...draft, foodItems: [...draft.foodItems, item] };
 }
@@ -65,7 +72,7 @@ export function updateItem(draft: BillDraft, itemId: string, patch: { name?: str
     foodItems: draft.foodItems.map((item) => {
       if (item.id !== itemId) return item;
       const next = { ...item };
-      if (patch.name !== undefined && patch.name.trim()) next.name = patch.name.trim();
+      if (patch.name !== undefined && patch.name.trim()) next.name = patch.name.trim().slice(0, MAX_NAME_CHARS);
       if (patch.price !== undefined && Number.isFinite(patch.price) && patch.price > 0) {
         next.price = Math.round(patch.price * 100) / 100;
       }
@@ -108,6 +115,10 @@ export function whatIsMissing(draft: BillDraft): string | null {
     return `ใส่ชื่อเพื่อนอีก ${need} คน`;
   }
   if (draft.foodItems.length === 0) return 'ใส่รายการอย่างน้อย 1 รายการ';
+  // กันพลาด: ทุกรายการต้องมีคนกินที่ยังอยู่ในบิลอย่างน้อย 1 คน
+  const ids = new Set(draft.participants.map((p) => p.id));
+  const orphan = draft.foodItems.find((i) => !i.participants.some((pid) => ids.has(pid)));
+  if (orphan) return `เลือกคนกิน "${orphan.name}" อย่างน้อย 1 คน`;
   return null;
 }
 

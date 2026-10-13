@@ -5,6 +5,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { Bill, FoodItem } from "../../lib/schema";
 import { calculateSplit } from "../../lib/billCalculator";
+import { fromSatang, toSatang } from "../../lib/money";
 import { PerPersonPromptPayQR, sanitizePromptPayId } from "../../components/PromptPayQR";
 import { formatTHB, formatThaiDate } from "../../lib/format";
 import { useParams, useRouter } from "next/navigation";
@@ -320,13 +321,19 @@ function BillDetailContent() {
       setIsSaving(true);
       setSaveMessage(null);
   
-      // 1) คำนวณยอดรวม (grand) จากรายการอาหาร + VAT + ServiceCharge - ส่วนลด
-      const food = (bill.foodItems || []).reduce((s, it) => s + (Number(it.price) || 0), 0);
-      const vatAmt = (food * (bill.vat || 0)) / 100;
-      const svcAmt = (food * (bill.serviceCharge || 0)) / 100;
-      const discount = bill.discount || 0;
-      const grand = Math.max(0, food + vatAmt + svcAmt - discount);
-  
+      // 1) คำนวณยอดของแต่ละคนใหม่ด้วยสูตรเดียวกับหน้าผลลัพธ์ แล้วยอดรวม = ผลรวมยอดทุกคน (สตางค์)
+      //    เดิมไม่คำนวณ splitResults ใหม่ และคิดค่าบริการจากค่าอาหาร ทำให้ประวัติบิลแสดงยอดเก่า/ไม่ตรง
+      const normalized = {
+        ...bill,
+        foodItems: (bill.foodItems || []).map((it) => ({ ...it, price: Number(it.price) || 0, participants: it.participants || [] })),
+        participants: bill.participants || [],
+        vat: bill.vat || 0,
+        serviceCharge: bill.serviceCharge || 0,
+        discount: bill.discount || 0,
+      };
+      const splitResults = calculateSplit(normalized);
+      const grand = fromSatang(splitResults.reduce((sum, r) => sum + toSatang(r.amount), 0));
+
       // 2) สถานะรวม (กันพลาด ถ้ามีการเปลี่ยนสถานะผู้ร่วมบิล)
       const allPaid = (bill.participants || []).every((p: any) => p.status === "paid");
       const status = allPaid ? "paid" : "pending";
@@ -335,14 +342,15 @@ function BillDetailContent() {
       const { id: _omit, ...payload } = bill;
       await updateDoc(doc(db, "bills", bill.id), {
         ...payload,
-        totalAmount: grand,       // ✅ ให้ bill-history เห็นยอดใหม่
+        totalAmount: grand,
+        splitResults,
         status,                   // ✅ sync สถานะรวม
         // updatedAt: serverTimestamp() // ถ้าใช้ serverTimestamp ให้ import จาก firebase/firestore
         updatedAt: new Date(),    // ใช้ Date ปกติถ้า schema ไม่ได้ใช้ serverTimestamp
       } as any);
   
       // 4) อัปเดต state หน้านี้ให้ตรงกับที่เพิ่งบันทึก
-      setBill(prev => prev ? { ...prev, totalAmount: grand, status } as any : prev);
+      setBill(prev => prev ? { ...prev, totalAmount: grand, splitResults, status } as any : prev);
   
       setIsEdited(false);
       setIsEditMode(false); // ✅ กลับโหมดดูหลังบันทึกสำเร็จ

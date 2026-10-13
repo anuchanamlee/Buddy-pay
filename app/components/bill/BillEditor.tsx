@@ -9,6 +9,7 @@ import {
   addItem,
   addPerson,
   isEveryone,
+  MAX_PEOPLE,
   removeItem,
   removePerson,
   setEveryone,
@@ -114,7 +115,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                 key={g.id}
                 type="button"
                 onClick={() => applyGroup(g)}
-                className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full border border-jade-200 bg-jade-50 px-3 text-sm font-medium text-jade-800 hover:bg-jade-100"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-jade-200 bg-jade-50 px-3 text-sm font-medium text-jade-800 hover:bg-jade-100"
               >
                 <Users className="h-4 w-4" aria-hidden />
                 {g.name}
@@ -126,12 +127,12 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
         {people.length > 0 && (
           <ul className="mt-3 flex flex-wrap gap-2" aria-label="รายชื่อคนที่ไป">
             {people.map((p) => (
-              <li key={p.id} className="inline-flex min-h-[36px] items-center gap-1 rounded-full bg-muted pl-3 pr-1 text-sm font-medium text-foreground">
+              <li key={p.id} className="inline-flex min-h-[44px] items-center gap-1 rounded-full bg-muted pl-3 pr-0.5 text-sm font-medium text-foreground">
                 {p.name}
                 <button
                   type="button"
                   onClick={() => onDraftChange(removePerson(draft, p.id))}
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"
                   aria-label={`เอา ${p.name} ออก`}
                 >
                   <X className="h-4 w-4" aria-hidden />
@@ -169,6 +170,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
               }
             }}
             autoFocus={people.length === 0}
+            maxLength={200}
             placeholder={people.length === 0 ? 'พิมพ์ชื่อแล้วกด Enter เช่น มิ้นท์' : 'เพิ่มอีกคน'}
             enterKeyHint="enter"
             autoComplete="off"
@@ -180,9 +182,11 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
           </Button>
         </form>
 
-        {people.length >= 2 && (
+        {people.length >= MAX_PEOPLE ? (
+          <p className="mt-2 text-sm text-warning-700">ใส่ได้สูงสุด {MAX_PEOPLE} คนต่อบิล</p>
+        ) : people.length >= 2 ? (
           <p className="mt-2 text-sm text-muted-foreground">ครบแล้วกด Enter ที่ช่องว่างเพื่อไปใส่รายการ</p>
-        )}
+        ) : null}
 
         {onSaveGroup && people.length >= 2 && (
           <button
@@ -219,7 +223,12 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                     <input
                       id={`name-${item.id}`}
                       defaultValue={item.name}
-                      onBlur={(e) => onDraftChange(updateItem(draft, item.id, { name: e.target.value }))}
+                      maxLength={200}
+                      onBlur={(e) => {
+                        // ลบชื่อจนว่างแล้วออกจากช่อง = ใช้ชื่อเดิม (ชื่อว่างไม่ถูกบันทึก)
+                        if (!e.target.value.trim()) e.target.value = item.name;
+                        else onDraftChange(updateItem(draft, item.id, { name: e.target.value }));
+                      }}
                       className="h-10 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-base text-foreground hover:border-border focus:border-ring focus:outline-none"
                     />
                     <label className="sr-only" htmlFor={`price-${item.id}`}>ราคา {item.name}</label>
@@ -250,7 +259,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                         type="button"
                         onClick={() => setOpenItem(open ? null : item.id)}
                         aria-expanded={open}
-                        className="inline-flex min-h-[32px] items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                        className="inline-flex min-h-[44px] items-center gap-1 text-left text-sm text-muted-foreground hover:text-foreground"
                       >
                         {everyone ? 'ทุกคนกิน' : `${item.participants.length} คนกิน: ${people.filter((p) => item.participants.includes(p.id)).map((p) => p.name).join(', ')}`}
                         <span className="font-medium text-primary">· แยกคนกิน</span>
@@ -270,7 +279,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                                 title={last ? 'ต้องมีคนกินอย่างน้อย 1 คน' : undefined}
                                 onClick={() => onDraftChange(toggleEater(draft, item.id, p.id))}
                                 className={cn(
-                                  'min-h-[36px] rounded-full border px-3 text-sm font-medium transition-colors',
+                                  'min-h-[44px] rounded-full border px-4 text-sm font-medium transition-colors',
                                   on ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card text-muted-foreground line-through',
                                   last && 'cursor-not-allowed opacity-80',
                                 )}
@@ -283,7 +292,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                             <button
                               type="button"
                               onClick={() => onDraftChange(setEveryone(draft, item.id))}
-                              className="min-h-[36px] px-2 text-sm font-medium text-primary hover:underline"
+                              className="min-h-[44px] px-2 text-sm font-medium text-primary hover:underline"
                             >
                               ทุกคนกิน
                             </button>
@@ -317,6 +326,7 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                 priceRef.current?.focus();
               }
             }}
+            maxLength={200}
             placeholder={draft.foodItems.length === 0 ? 'เมนู เช่น หมูกระทะ' : 'เมนูถัดไป'}
             enterKeyHint="next"
             autoComplete="off"

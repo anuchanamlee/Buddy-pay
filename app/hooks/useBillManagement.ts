@@ -353,6 +353,39 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
   }, [dispatch]);
 
   // ฟังก์ชันสำหรับการบันทึกบิล
+  const calculatedResults = useMemo(() => {
+    // ตรวจสอบว่าข้อมูลพร้อมสำหรับการคำนวณหรือไม่
+    if (state.participants.length === 0) return [];
+
+    const billData = {
+      name: state.billName,
+      totalAmount: 0,
+      foodItems: state.foodItems,
+      participants: state.participants,
+      vat: state.vat,
+      discount: state.discount,
+      serviceCharge: state.serviceCharge,
+      splitMethod: state.splitMethod,
+      createdAt: new Date(),
+      categoryId: state.categoryId,
+      status: 'pending' as const,
+    };
+
+    return calculateSplit(billData as Bill);
+  }, [state.foodItems, state.participants, state.vat, state.discount, state.serviceCharge, state.splitMethod, state.billName, state.categoryId]);
+
+  // ยอดรวมของบิล = ผลรวมยอดของทุกคน (คิดเป็นสตางค์) จึงตรงกับที่แต่ละคนจ่ายพอดี
+  // เดิมคิดค่าบริการจากค่าอาหารแทนยอดหลัง VAT ยอดรวมจึงไม่ตรงเมื่อมีทั้ง VAT และค่าบริการ
+  const billTotal = useMemo(
+    () => fromSatang(calculatedResults.reduce((sum, r) => sum + toSatang(r.amount), 0)),
+    [calculatedResults],
+  );
+  useEffect(() => {
+    if (state.totalAmount !== billTotal) {
+      dispatch({ type: 'SET_TOTAL_AMOUNT', payload: billTotal });
+    }
+  }, [billTotal, state.totalAmount, dispatch]);
+
   // คืน true เมื่อบันทึกสำเร็จ (หน้าเรียกใช้จะล้างบิลที่ค้างไว้)
   const handleSaveBill = useCallback(async (): Promise<boolean> => {
     if (!isAuthenticated) {
@@ -373,7 +406,7 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
       // เตรียมข้อมูลที่จะบันทึก
       const billData = {
         name: state.billName,
-        totalAmount: state.totalAmount,
+        totalAmount: billTotal,
         vat: state.vat,
         discount: state.discount,
         serviceCharge: state.serviceCharge,
@@ -381,7 +414,8 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
         categoryId: state.categoryId,
         foodItems: state.foodItems,
         participants: state.participants,
-        splitResults: state.splitResults,
+        // ใช้ผลคำนวณล่าสุดโดยตรง ไม่อ่านจาก state ที่อาจยังไม่อัปเดต (เช่นบันทึกต่อทันทีหลังล็อกอิน)
+        splitResults: calculatedResults,
         // เก็บเลขพร้อมเพย์ไว้ให้หน้ารายละเอียดบิลสร้าง QR ของแต่ละคนได้
         ...(promptPayId.replace(/[^0-9]/g, '') ? { promptPayId: promptPayId.replace(/[^0-9]/g, '') } : {}),
         userId: user?.uid || '',
@@ -409,7 +443,7 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
       dispatch({ type: 'SET_LOADING', payload: false });
       setIsLoading(false);
     }
-  }, [isAuthenticated, state, user, router, showToast, openLoginModal, dispatch, promptPayId]);
+  }, [isAuthenticated, state, user, router, showToast, openLoginModal, dispatch, promptPayId, calculatedResults, billTotal]);
 
   // ฟังก์ชันโหลดบิลเพิ่มเติม
   const loadMoreBills = useCallback(async () => {
@@ -506,39 +540,6 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
   }, []);
 
   // คำนวณผลลัพธ์
-  const calculatedResults = useMemo(() => {
-    // ตรวจสอบว่าข้อมูลพร้อมสำหรับการคำนวณหรือไม่
-    if (state.participants.length === 0) return [];
-
-    const billData = {
-      name: state.billName,
-      totalAmount: 0,
-      foodItems: state.foodItems,
-      participants: state.participants,
-      vat: state.vat,
-      discount: state.discount,
-      serviceCharge: state.serviceCharge,
-      splitMethod: state.splitMethod,
-      createdAt: new Date(),
-      categoryId: state.categoryId,
-      status: 'pending' as const,
-    };
-
-    return calculateSplit(billData as Bill);
-  }, [state.foodItems, state.participants, state.vat, state.discount, state.serviceCharge, state.splitMethod, state.billName, state.categoryId]);
-
-  // ยอดรวมของบิล = ผลรวมยอดของทุกคน (คิดเป็นสตางค์) จึงตรงกับที่แต่ละคนจ่ายพอดี
-  // เดิมคิดค่าบริการจากค่าอาหารแทนยอดหลัง VAT ยอดรวมจึงไม่ตรงเมื่อมีทั้ง VAT และค่าบริการ
-  const billTotal = useMemo(
-    () => fromSatang(calculatedResults.reduce((sum, r) => sum + toSatang(r.amount), 0)),
-    [calculatedResults],
-  );
-  useEffect(() => {
-    if (state.totalAmount !== billTotal) {
-      dispatch({ type: 'SET_TOTAL_AMOUNT', payload: billTotal });
-    }
-  }, [billTotal, state.totalAmount, dispatch]);
-
   return {
     promptPayId,
     setPromptPayId,

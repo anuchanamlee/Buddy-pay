@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useAuthModal } from '../context/AuthModalContext';
 import { billReducer } from '../reducers/billReducer';
 import { initialState } from '../lib/billTypes';
 import { useBillManagement } from '../hooks/useBillManagement';
@@ -30,6 +31,7 @@ type View = 'edit' | 'result';
  */
 export default function ShareBillPage() {
   const { isAuthenticated, user } = useAuth();
+  const { isAuthModalOpen } = useAuthModal();
   const [state, dispatch] = useReducer(billReducer, { ...initialState, splitMethod: 'itemized' });
   const {
     promptPayId,
@@ -125,6 +127,31 @@ export default function ShareBillPage() {
     }
   }, [ready, isAuthenticated, pendingSave, view, calculatedResults.length, save]);
 
+  // ปิดหน้าต่างล็อกอินโดยไม่ล็อกอิน = ยกเลิกการบันทึกที่ค้างไว้ (ไม่บันทึกเองทีหลังโดยไม่ถาม)
+  const authRef = useRef(isAuthenticated);
+  authRef.current = isAuthenticated;
+  const wasModalOpen = useRef(false);
+  useEffect(() => {
+    if (isAuthModalOpen) {
+      wasModalOpen.current = true;
+      return;
+    }
+    if (!wasModalOpen.current || !pendingSave) return;
+    wasModalOpen.current = false;
+    // รอให้สถานะล็อกอินอัปเดตก่อน (ล็อกอินสำเร็จแล้วหน้าต่างปิดเองเหมือนกัน)
+    const t = window.setTimeout(() => {
+      if (!authRef.current) {
+        setPendingSave(false);
+        try {
+          if (sessionStorage.getItem('returnUrl') === '/share-bill') sessionStorage.removeItem('returnUrl');
+        } catch {
+          /* ไม่เป็นไร */
+        }
+      }
+    }, 2000);
+    return () => window.clearTimeout(t);
+  }, [isAuthModalOpen, pendingSave]);
+
   const missing = whatIsMissing(draft);
 
   return (
@@ -148,7 +175,7 @@ export default function ShareBillPage() {
                     aria-selected={mode === t.id}
                     onClick={() => setMode(t.id)}
                     className={cn(
-                      'min-h-[36px] rounded-full px-4 text-sm font-semibold transition-colors',
+                      'min-h-[40px] rounded-full px-4 text-sm font-semibold transition-colors',
                       mode === t.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
@@ -158,7 +185,7 @@ export default function ShareBillPage() {
               </div>
             </div>
 
-            {mode === 'items' ? (
+            {!ready ? null : mode === 'items' ? (
               <>
                 <BillEditor
                   draft={draft}

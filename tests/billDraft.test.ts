@@ -184,3 +184,31 @@ describe('personBreakdown', () => {
     expect(b).toMatchObject({ food: 0, vat: 0, service: 0, discount: 0, items: [] });
   });
 });
+
+describe('จากผลรีวิว: รายการที่ใส่ก่อนชื่อไม่หายจากบิล', () => {
+  it('ใส่รายการก่อน แล้วค่อยใส่ชื่อ ทุกคนกินรายการนั้น', () => {
+    let d = addItem(empty, 'หมูกระทะ', 348.31, 'i1');
+    d = addPerson(d, 'a', 'a');
+    d = addPerson(d, 'b', 'b');
+    d = addPerson(d, 'c', 'c');
+    expect(d.foodItems[0].participants).toEqual(['a', 'b', 'c']);
+    expect(sumSatang(amounts(d))).toBe(34831);
+  });
+  it('ลบทุกคนแล้วใส่ใหม่ รายการกลับมามีคนกิน', () => {
+    let d = addItem(withPeople('a', 'b'), 'x', 90, 'i1');
+    d = removePerson(removePerson(d, 'a'), 'b');
+    d = addPerson(addPerson(d, 'c', 'c'), 'd', 'd');
+    expect(d.foodItems[0].participants).toEqual(['c', 'd']);
+    expect(whatIsMissing(d)).toBeNull();
+  });
+  it('รายการที่ไม่มีคนกินที่ยังอยู่ในบิล ถูกกันไม่ให้ไปหน้าผลลัพธ์', () => {
+    const d: BillDraft = { ...withPeople('a', 'b'), foodItems: [{ id: 'i1', name: 'x', price: 10, participants: ['ghost'] }] };
+    expect(whatIsMissing(d)).toBe('เลือกคนกิน "x" อย่างน้อย 1 คน');
+  });
+  it('ไม่เกิน 50 คน และชื่อยาวถูกตัดที่ 200 ตัวอักษร', () => {
+    let d = empty;
+    for (let i = 0; i < 55; i++) d = addPerson(d, `p${i}`);
+    expect(d.participants).toHaveLength(50);
+    expect(addPerson(empty, 'ก'.repeat(300)).participants[0].name).toHaveLength(200);
+  });
+});

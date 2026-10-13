@@ -20,7 +20,7 @@ import {
   where, 
   getDocs, 
   doc, 
-  updateDoc,
+  runTransaction,
   orderBy,
   limit,
   startAfter,
@@ -46,7 +46,8 @@ export default function BillHistory() {
     const router = useRouter();
   // State สำหรับ pagination
   const [page, setPage] = useState(1);
-  const [savingBillId, setSavingBillId] = useState<string | null>(null);
+  // บิลที่กำลังบันทึกอยู่ (หลายบิลพร้อมกันได้ แต่บิลเดียวกันห้ามซ้อน)
+  const [savingBills, setSavingBills] = useState<Set<string>>(() => new Set());
   const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({});
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -192,7 +193,7 @@ export default function BillHistory() {
   // ติ๊กสถานะการจ่ายของผู้เข้าร่วมหนึ่งคน (optimistic: อัพเดตหน้าจอก่อน ถ้าบันทึกไม่สำเร็จจะย้อนกลับ)
   const togglePayment = async (billId: string, participantId: string, newStatus: PaymentStatus) => {
     const current = billsRef.current.find((b) => b.id === billId);
-    if (!current || savingBillId === billId) return;
+    if (!current || savingBills.has(billId)) return;
     const previousStatus: PaymentStatus = newStatus === 'paid' ? 'pending' : 'paid';
 
     const applyToState = (status: PaymentStatus) => {
@@ -209,20 +210,30 @@ export default function BillHistory() {
       return rest;
     });
 
-    const updated = applyPaymentStatus(current, participantId, newStatus);
     applyToState(newStatus);
 
     // ข้อมูลตัวอย่าง (ยังไม่ล็อกอิน): เปลี่ยนในเครื่องเท่านั้น ไม่เขียน Firestore
     if (!isAuthenticated || !user || String(billId).startsWith('mock-')) return;
 
-    setSavingBillId(billId);
+    setSavingBills((prev) => new Set(prev).add(billId));
     try {
-      const payload: DocumentData = {
-        participants: updated.participants,
-        status: updated.status,
-      };
-      if (updated.splitResults !== undefined) payload.splitResults = updated.splitResults;
-      await updateDoc(doc(db, 'bills', billId), payload);
+      // อ่านบิลล่าสุดจาก Firestore แล้วเปลี่ยนเฉพาะคนนี้ใน transaction
+      // กันกรณีหน้าจอแสดงข้อมูลเก่าจากแคช แล้วเขียนทับสถานะที่เพิ่งติ๊กจากหน้ารายละเอียด
+      const fresh = await runTransaction(db, async (tx) => {
+        const ref = doc(db, 'bills', billId);
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('bill not found');
+        const latest = { id: billId, ...snap.data() } as typeof current;
+        const next = applyPaymentStatus(latest, participantId, newStatus);
+        const payload: DocumentData = { participants: next.participants, status: next.status };
+        if (next.splitResults !== undefined) payload.splitResults = next.splitResults;
+        tx.update(ref, payload);
+        return { ...latest, ...next };
+      });
+      // ใช้ข้อมูลจาก Firestore เป็นหลัก (อาจมีคนอื่นที่ถูกติ๊กจากที่อื่นด้วย)
+      const synced = billsRef.current.map((b) => (b.id === billId ? { ...b, participants: fresh.participants, splitResults: fresh.splitResults, status: fresh.status } : b));
+      billsRef.current = synced;
+      setBills(synced);
       void cacheBills(billsRef.current);
     } catch (error) {
       console.error('Error updating payment status:', error);
@@ -234,7 +245,11 @@ export default function BillHistory() {
         [billId]: `บันทึกสถานะของ ${person} ไม่สำเร็จ ระบบคืนค่าเดิมให้แล้ว กรุณาลองใหม่อีกครั้ง`,
       }));
     } finally {
-      setSavingBillId(null);
+      setSavingBills((prev) => {
+        const next = new Set(prev);
+        next.delete(billId);
+        return next;
+      });
     }
   };
 
@@ -472,7 +487,7 @@ export default function BillHistory() {
                   <BillPayments
                     bill={bill}
                     canToggle={!isAuthenticated || bill.userId === user?.uid}
-                    saving={savingBillId === bill.id}
+                    saving={savingBills.has(bill.id)}
                     onToggle={(pid, status) => togglePayment(bill.id, pid, status)}
                   />
                   {!isAuthenticated && (
