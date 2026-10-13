@@ -48,13 +48,12 @@ export function formatThaiDate(input: DateLike, { withTime = true } = {}): strin
   return (withTime ? thaiDateTime : thaiDate).format(date);
 }
 
-const thb = new Intl.NumberFormat('th-TH', {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
+const thbWhole = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 });
+const thbSatang = new Intl.NumberFormat('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** จำนวนเงินบาท แสดงทศนิยมเมื่อมีสตางค์ เช่น 130 → "130", 133.335 → "133.34" */
+/** จำนวนเงินบาท: บาทเต็มไม่มีทศนิยม มีสตางค์แสดง 2 ตำแหน่งเสมอ เช่น 130 → "130", 212.5 → "212.50" */
 export function formatTHB(amount: number | null | undefined): string {
   const value = typeof amount === 'number' && Number.isFinite(amount) ? amount : 0;
-  return thb.format(value);
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? thbWhole.format(rounded) : thbSatang.format(rounded);
 }
