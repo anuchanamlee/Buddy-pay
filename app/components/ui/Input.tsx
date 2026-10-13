@@ -66,14 +66,15 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           )}
           
           <input
-            type={isPasswordField ? (showPassword ? "text" : "password") : props.type}
             className={cn(
               inputVariants({ variant, inputSize, className }),
               leftElement && "pl-9",
-              (rightElement || isPasswordField) && "pr-9"
+              (rightElement && !isPasswordField) && "pr-9",
+              isPasswordField && "pr-11"
             )}
             ref={ref}
             {...props}
+            type={isPasswordField ? (showPassword ? "text" : "password") : props.type}
           />
           
           {rightElement && !isPasswordField && (
@@ -85,7 +86,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {isPasswordField && (
             <button
               type="button"
-              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-gray-700"
+              className="absolute right-0 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
               aria-pressed={showPassword}

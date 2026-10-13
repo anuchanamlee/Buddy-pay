@@ -1,0 +1,17 @@
+{
+  "id": "/quick",
+  "name": "หารด่วน - BuddyPay",
+  "short_name": "หารด่วน",
+  "description": "ใส่ยอดรวมกับจำนวนคน ได้ยอดต่อคนและ QR ทันที",
+  "lang": "th",
+  "start_url": "/share-bill?mode=quick&source=quick-icon",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#146F68",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

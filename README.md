@@ -40,6 +40,8 @@ Splitting a Thai restaurant bill is fiddly: some people didn't drink the beer, t
 | Auth | Email/password and Google sign-in (Firebase Auth); signing in mid-flow keeps the bill |
 | Admin | User management and overview for `role: admin` |
 | Design system | Tokens and components documented at `/design` |
+| Install on phone (PWA) | Add to home screen on iPhone and Android, Android long-press shortcuts, a separate "quick split" icon, works offline for splitting (`/install`) |
+| Badge and reminders | Unpaid count on the app icon; optional daily Web Push reminder via Vercel Cron (free) |
 
 ## Tech stack
 
@@ -109,6 +111,15 @@ Sign-in, saving bills and share links need a real Firebase project (step 2).
 6. *(Optional)* **Firestore → TTL policies:** collection `temporary_shared_bills`, field `expiresAt` — deletes expired share links automatically.
 7. *(Optional)* To make yourself an admin, sign up once, then in Firestore set `users/{your uid}.role` to `"admin"`.
 8. `npm run dev` and sign in.
+
+### Optional: daily payment reminders (Web Push)
+
+Free: Vercel Cron calls `/api/cron/reminders` once a day (18:00 Thailand, `vercel.json`). Without these variables the feature stays off.
+
+1. Generate keys on your machine: `npx web-push generate-vapid-keys`
+2. In Vercel → Settings → Environment Variables add `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (e.g. `mailto:you@example.com`), `CRON_SECRET` (any long random string) and `FIREBASE_SERVICE_ACCOUNT` (the JSON from Firebase → Project settings → Service accounts → Generate new private key, pasted as one line). The private key, service account and cron secret are secrets — never commit them.
+3. Deploy the updated rules: `firebase deploy --only firestore:rules`
+4. Redeploy, open `/install` on your phone, and turn on notifications. On iPhone, add the app to the home screen first (iOS 16.4+).
 
 ### 3. Deploy to Vercel
 

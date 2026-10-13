@@ -1,24 +1,41 @@
 {
-  "name": "BuddyPay",
+  "id": "/",
+  "name": "BuddyPay หารบิลกับเพื่อน",
   "short_name": "BuddyPay",
-  "description": "แอปสำหรับแชร์บิลร้านอาหารและค่าใช้จ่ายอื่นๆ กับเพื่อนของคุณ",
-  "start_url": "/",
+  "description": "หารบิลกับเพื่อนให้ถึงสตางค์ พร้อม QR พร้อมเพย์ของแต่ละคน",
+  "lang": "th",
+  "start_url": "/share-bill?source=pwa",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4f46e5",
+  "background_color": "#f4f6f5",
+  "theme_color": "#146F68",
   "orientation": "portrait",
   "icons": [
+    { "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
     {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "name": "หารด่วน",
+      "short_name": "หารด่วน",
+      "description": "ใส่ยอดรวมกับจำนวนคน ได้ยอดต่อคนทันที",
+      "url": "/share-bill?mode=quick&source=shortcut",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "src": "/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "name": "ใส่บิล",
+      "short_name": "ใส่บิล",
+      "description": "ใส่ชื่อเพื่อนและรายการอาหาร",
+      "url": "/share-bill?mode=items&source=shortcut",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "ใครยังค้าง",
+      "short_name": "ใครยังค้าง",
+      "description": "ดูบิลที่ยังเก็บเงินไม่ครบ",
+      "url": "/bill-history?source=shortcut",
+      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
-} 
+}

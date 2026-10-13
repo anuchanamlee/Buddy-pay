@@ -158,6 +158,16 @@ npm run dev                  # http://localhost:3000/share-bill
 7. (ไม่บังคับ) อยากเป็น admin: สมัครสมาชิกก่อน แล้วแก้ `users/{uid ของคุณ}.role` เป็น `"admin"` ใน Firestore
 8. `npm run dev` แล้วล็อกอินได้เลย
 
+### ใช้บนมือถือและแจ้งเตือนทวงเงิน
+
+- หน้า `/install` สอนติดตั้งลงหน้าจอโฮม (iPhone และ Android) มีทางลัดตอนกดค้างที่ไอคอนบน Android และไอคอน "หารด่วน" แยกได้ที่ `/quick` หน้าหารบิลใช้ได้ตอนไม่มีเน็ต
+- ไอคอนแอปขึ้นตัวเลขจำนวนคนที่ยังค้างจ่าย (iPhone ต้องติดตั้งลงหน้าจอโฮมและอนุญาตการแจ้งเตือน)
+- แจ้งเตือนทวงเงินทุกเย็น (ไม่บังคับ ฟรี ใช้ Vercel Cron วันละครั้ง):
+  1. สร้างคีย์ในเครื่อง: `npx web-push generate-vapid-keys`
+  2. ตั้งค่าใน Vercel → Settings → Environment Variables: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (เช่น `mailto:you@example.com`), `CRON_SECRET` (ข้อความสุ่มยาว ๆ) และ `FIREBASE_SERVICE_ACCOUNT` (JSON จาก Firebase → Project settings → Service accounts → Generate new private key วางเป็นบรรทัดเดียว) ค่าที่เป็นความลับห้าม commit
+  3. `firebase deploy --only firestore:rules`
+  4. Redeploy แล้วเปิด `/install` ในมือถือ กดเปิดแจ้งเตือน
+
 Deploy บน Vercel: import repo ใส่ environment variables ชุดเดียวกัน แล้วเพิ่มโดเมนของ Vercel ใน Authorized domains ของ Firebase
 
 ### Environment variables
