@@ -1,265 +1,147 @@
 'use client';
 
-import { Suspense, useEffect } from 'react';
-import { Button } from '@/app/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Card';
+import Link from 'next/link';
+import { QrCode, History, BellRing, Scale } from 'lucide-react';
+import { buttonVariants } from '@/app/components/ui/Button';
+import { ReceiptSlip } from '@/app/components/ui/ReceiptSlip';
 import { useAuthModal } from './context/AuthModalContext';
+import { allocateSatang, fromSatang, toSatang } from './lib/money';
+import { formatTHB } from './lib/format';
+import { cn } from '@/lib/utils';
 
+// ตัวอย่างบิลจริงในหน้าแรก คำนวณด้วยสูตรเดียวกับแอป (หารเป็นสตางค์)
+const demoBill = {
+  name: 'หมูกระทะหลังเลิกงาน',
+  items: [
+    { name: 'บุฟเฟต์ 4 ที่', price: 1196 },
+    { name: 'น้ำแข็งกับน้ำเปล่า', price: 54 },
+  ],
+  people: [
+    { name: 'มิ้นท์', paid: true },
+    { name: 'บอส', paid: false },
+    { name: 'ฝน', paid: true },
+    { name: 'เจ', paid: false },
+  ],
+};
+const demoTotal = demoBill.items.reduce((sum, i) => sum + i.price, 0);
+const demoShares = allocateSatang(toSatang(demoTotal), demoBill.people.map(() => 1)).map(fromSatang);
+
+const steps = [
+  { title: 'ใส่ชื่อเพื่อน', description: 'พิมพ์ชื่อคนที่ไปด้วยกัน หรือเลือกกลุ่มที่เคยบันทึกไว้' },
+  { title: 'ใส่รายการ', description: 'จดเมนูกับราคา จะหารเท่ากันหรือหารตามที่แต่ละคนกินก็ได้' },
+  { title: 'ส่งยอดให้เพื่อน', description: 'ได้ยอดของทุกคนพร้อม QR พร้อมเพย์ ส่งเข้า LINE ได้ในคลิกเดียว' },
+];
 
 const features = [
-  { title: 'แบ่งบิลแสนง่าย', description: 'คำนวณค่าอาหาร ค่าเช่า หรือค่าใช้จ่ายต่างๆ ระหว่างเพื่อนได้อย่างรวดเร็ว', icon: '🧮' },
-  { title: 'ชำระเงินได้ทันที', description: 'รองรับการชำระเงินผ่าน QR Code เพื่อความสะดวกในการจ่ายเงินให้เพื่อน', icon: '💸' },
-  { title: 'บันทึกประวัติครบถ้วน', description: 'เก็บประวัติการแชร์บิลทั้งหมด ดูย้อนหลังได้ตลอดเวลา', icon: '📊' },
-  { title: 'ติดตามยอดค้างชำระ', description: 'เห็นทันทีว่าใครยังไม่จ่ายและค้างเท่าไร จากแถบเมนูและหน้าสถิติ', icon: '🔔' },
+  { icon: Scale, title: 'หารตามที่กินจริง', description: 'ใครไม่ได้กินเมนูไหนก็ไม่ต้องจ่าย VAT ค่าบริการ และส่วนลดถูกแบ่งตามสัดส่วนให้เอง' },
+  { icon: QrCode, title: 'QR ของแต่ละคน', description: 'เพื่อนสแกนแล้วยอดของตัวเองขึ้นทันที ไม่ต้องพิมพ์ตัวเลขเอง' },
+  { icon: BellRing, title: 'รู้ว่าใครยังไม่จ่าย', description: 'ติ๊กคนที่จ่ายแล้ว ยอดค้างรวมแสดงที่เมนูด้านบนตลอด' },
+  { icon: History, title: 'ย้อนดูบิลเก่าได้', description: 'บิลที่บันทึกไว้อยู่ในประวัติ พร้อมสถิติว่าแต่ละเดือนใช้ไปเท่าไร' },
 ];
 
 export default function HomeClient() {
-  const { openLoginModal, openSignupModal } = useAuthModal();
-
-  useEffect(() => {
-    const preloadImage = () => {
-      // ตรวจสอบว่าไฟล์มีอยู่จริงก่อนทำการ preload
-      const testImage = new Image();
-      testImage.onload = () => {
-        // ถ้าไฟล์มีอยู่จริง ให้ทำการ preload
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = '/icon-192x192.png';
-        document.head.appendChild(link);
-      };
-      testImage.onerror = () => {
-        // ถ้าไฟล์ไม่มี ให้ skip การ preload
-        console.log('Icon file not found, skipping preload');
-      };
-      testImage.src = '/icon-192x192.png';
-    };
-    
-    preloadImage();
-    
-    const lcpElement = document.getElementById('main-heading');
-    if (lcpElement) {
-      if ('priority' in lcpElement) {
-        (lcpElement as any).priority = 'high';
-      }
-    }
-  }, []);
+  const { openSignupModal } = useAuthModal();
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-primary to-secondary py-20 text-white">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="flex flex-col-reverse md:flex-row items-center gap-10">
-            <div className="md:w-1/2 space-y-6">
-              <h1 
-                className="text-4xl md:text-5xl font-bold leading-tight" 
-                id="main-heading"
-                style={{ contentVisibility: 'auto' }}
-              >
-                แบ่งบิลกับเพื่อน<br />
-                <span className="text-yellow-200">ไม่ยุ่งยากอีกต่อไป</span>
-              </h1>
-              <noscript>
-                <style dangerouslySetInnerHTML={{ __html: '#main-heading { opacity: 1 !important; }' }} />
-              </noscript>
-              <p className="text-lg md:text-xl opacity-90">
-                BuddyPay ช่วยให้คุณคำนวณค่าใช้จ่ายร่วมกับเพื่อน ครอบครัว หรือเพื่อนร่วมงานได้อย่างง่ายดาย ไม่มีความยุ่งยากในการคำนวณอีกต่อไป
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Button 
-                  onClick={() => location.href = '/share-bill'} 
-                  size="lg" 
-                  className="shadow-lg"
-                >
-                  เริ่มคำนวณบิล
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  size="lg" 
-                  className="bg-white text-primary hover:bg-white/90"
-                  onClick={openSignupModal}
-                >
-                  สมัครสมาชิก
-                </Button>
-              </div>
-            </div>
-            <div className="md:w-1/2 flex justify-center">
-              <div className="w-72 h-72 sm:w-80 sm:h-80 flex flex-col items-center justify-center p-6 sm:p-8 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-center">
-                <div className="text-6xl sm:text-8xl mb-3 sm:mb-4">💰</div>
-                <h3 className="text-xl sm:text-2xl font-bold mb-2">คำนวณบิลง่ายๆ</h3>
-                <p className="opacity-90 text-sm sm:text-base">แชร์ค่าใช้จ่ายกับเพื่อนอย่างเป็นธรรม ไม่มีใครได้เปรียบเสียเปรียบ</p>
-              </div>
+    <div className="flex min-h-screen flex-col">
+      {/* Hero: ข้อความหลักกับตัวอย่างบิลจริง */}
+      <section className="border-b border-border bg-card">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-14 md:grid-cols-[1.05fr_1fr] md:py-20">
+          <div>
+            <h1 id="main-heading" className="text-[2.25rem] font-bold leading-[1.2] text-foreground md:text-5xl md:leading-[1.15]">
+              หารบิลกับเพื่อน
+              <br />
+              จบในนาทีเดียว
+            </h1>
+            <p className="mt-5 max-w-[34rem] text-lg leading-relaxed text-muted-foreground">
+              ใส่ชื่อเพื่อนกับรายการอาหาร BuddyPay คิดยอดของทุกคนให้ถึงสตางค์ พร้อม QR พร้อมเพย์ที่ใส่ยอดไว้แล้ว ไม่ต้องสมัครก็ใช้ได้
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/share-bill" className={cn(buttonVariants({ size: 'lg' }), 'px-7')}>
+                เริ่มหารบิล
+              </Link>
+              <button type="button" onClick={openSignupModal} className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+                สมัครเพื่อบันทึกบิล
+              </button>
             </div>
           </div>
+
+          {/* ตัวอย่างผลลัพธ์ หน้าตาเดียวกับหน้าผลลัพธ์จริง */}
+          <figure aria-label="ตัวอย่างผลการหารบิล" className="rounded-2xl bg-jade-50 p-4 sm:p-6">
+            <figcaption className="mb-4 flex items-baseline justify-between gap-3">
+              <span className="font-semibold text-jade-900">{demoBill.name}</span>
+              <span className="tabular-nums text-sm text-jade-800">รวม {formatTHB(demoTotal)} บาท</span>
+            </figcaption>
+            <div className="grid grid-cols-2 gap-3">
+              {demoBill.people.map((p, i) => (
+                <ReceiptSlip key={p.name} name={p.name} amount={demoShares[i]} status={p.paid ? 'paid' : 'pending'} />
+              ))}
+            </div>
+          </figure>
         </div>
       </section>
-      {/* Features Section */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">ทำไมต้อง BuddyPay</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              แอปพลิเคชันที่ออกแบบมาเพื่อช่วยให้การแชร์บิลกับเพื่อนเป็นเรื่องง่ายและสนุก ไม่มีความยุ่งยากในการคำนวณอีกต่อไป
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
-              <Card 
-                key={index} 
-                className="border-t-4 border-t-primary hover:-translate-y-1 transition-all duration-300"
-              >
-                <CardHeader>
-                  <div className="text-3xl mb-2">{feature.icon}</div>
-                  <CardTitle>{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
+
+      {/* วิธีใช้: เป็นลำดับจริง จึงใช้ตัวเลข */}
+      <section className="py-16">
+        <div className="mx-auto max-w-6xl px-4">
+          <h2 className="text-2xl font-bold text-foreground md:text-3xl">ใช้ยังไง</h2>
+          <ol className="mt-8 grid gap-6 md:grid-cols-3">
+            {steps.map((step, i) => (
+              <li key={step.title} className="flex gap-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground tabular-nums">
+                  {i + 1}
+                </span>
+                <div>
+                  <h3 className="font-semibold text-foreground">{step.title}</h3>
+                  <p className="mt-1 leading-relaxed text-muted-foreground">{step.description}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="border-y border-border bg-card py-16">
+        <div className="mx-auto max-w-6xl px-4">
+          <h2 className="text-2xl font-bold text-foreground md:text-3xl">ทำอะไรได้บ้าง</h2>
+          <div className="mt-8 grid gap-x-10 gap-y-8 sm:grid-cols-2">
+            {features.map(({ icon: Icon, title, description }) => (
+              <div key={title} className="flex gap-4">
+                <Icon className="mt-0.5 h-6 w-6 shrink-0 text-primary" aria-hidden />
+                <div>
+                  <h3 className="font-semibold text-foreground">{title}</h3>
+                  <p className="mt-1 max-w-[30rem] leading-relaxed text-muted-foreground">{description}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
-      <Suspense fallback={<div className="py-16 bg-gray-50 text-center">กำลังโหลด...</div>}>
-        {/* How it works Section */}
-        <section className="py-16 bg-gray-50">
-          <div className="container mx-auto px-4 max-w-7xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">วิธีการใช้งาน</h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                เพียง 3 ขั้นตอนง่ายๆ คุณก็สามารถแชร์บิลกับเพื่อนได้อย่างสะดวกและรวดเร็ว
-              </p>
-            </div>
-            <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
-              <Card className="md:w-1/3 bg-gradient-to-br from-primary/5 to-secondary/5">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold mb-4">1</div>
-                  <CardTitle>เพิ่มรายการ</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">เพิ่มรายการค่าใช้จ่ายทั้งหมดของคุณพร้อมราคา</p>
-                </CardContent>
-              </Card>
-              <Card className="md:w-1/3 bg-gradient-to-br from-primary/5 to-secondary/5">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold mb-4">2</div>
-                  <CardTitle>ระบุผู้ร่วมจ่าย</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">เลือกว่าใครเป็นคนจ่ายแต่ละรายการ และใครเป็นคนร่วมรับผิดชอบ</p>
-                </CardContent>
-              </Card>
-              <Card className="md:w-1/3 bg-gradient-to-br from-primary/5 to-secondary/5">
-                <CardHeader>
-                  <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold mb-4">3</div>
-                  <CardTitle>ดูสรุปบิล</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">รับผลลัพธ์การคำนวณที่แสดงว่าใครต้องจ่ายให้ใครเท่าไร</p>
-                </CardContent>
-              </Card>
-            </div>
-            <div className="mt-12 text-center">
-              <Button 
-                size="lg" 
-                className="px-8"
-                onClick={() => location.href = '/share-bill'}
-              >
-                เริ่มคำนวณเลย
-              </Button>
-            </div>
+
+      <section className="py-16">
+        <div className="mx-auto flex max-w-6xl flex-col items-start gap-5 px-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">มื้อหน้าลองหารด้วย BuddyPay</h2>
+            <p className="mt-2 text-muted-foreground">สมัครฟรี เพื่อเก็บบิลไว้ติดตามว่าใครจ่ายแล้วบ้าง</p>
           </div>
-        </section>
-        {/* CTA Section */}
-        <section className="py-16 bg-gradient-to-r from-primary to-secondary text-white">
-          <div className="container mx-auto px-4 max-w-7xl">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold mb-4">พร้อมที่จะแชร์บิลอย่างง่ายดาย?</h2>
-              <p className="text-lg max-w-2xl mx-auto mb-8 opacity-90">
-                สมัครสมาชิกวันนี้เพื่อบันทึกประวัติการแชร์บิลและใช้งานฟีเจอร์พิเศษทั้งหมด
-              </p>
-              <div className="flex justify-center gap-4">
-                <Button 
-                  variant="secondary" 
-                  size="lg" 
-                  className="bg-white text-primary hover:bg-white/90"
-                  onClick={openSignupModal}
-                >
-                  สมัครสมาชิกฟรี
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg" 
-                  className="bg-white text-primary hover:bg-white/90"
-                  onClick={() => location.href = '/share-bill'}
-                >
-                  ทดลองใช้งานก่อน
-                </Button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </Suspense>
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="container mx-auto px-4 max-w-7xl">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="mb-8 md:mb-0">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-white text-primary flex items-center justify-center font-bold">
-                  LB
-                </div>
-                <span className="text-xl font-bold">BuddyPay</span>
-              </div>
-              <p className="text-gray-400 max-w-sm">
-                แอปพลิเคชันคำนวณและแชร์บิลกับเพื่อนที่ง่ายที่สุด
-              </p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
-              <div>
-                <h4 className="font-bold mb-4">ฟีเจอร์</h4>
-                <ul className="space-y-2">
-                  <li><a href="/share-bill" className="text-gray-400 hover:text-white transition-colors">คำนวณบิล</a></li>
-                  <li><a href="/history" className="text-gray-400 hover:text-white transition-colors">ประวัติบิล</a></li>
-                  <li><a href="/statistics" className="text-gray-400 hover:text-white transition-colors">สถิติ</a></li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-bold mb-4">บัญชี</h4>
-                <ul className="space-y-2">
-                  <li>
-                    <button 
-                      onClick={openLoginModal} 
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      เข้าสู่ระบบ
-                    </button>
-                  </li>
-                  <li>
-                    <button 
-                      onClick={openSignupModal} 
-                      className="text-gray-400 hover:text-white transition-colors"
-                    >
-                      สมัครสมาชิก
-                    </button>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-bold mb-4">ช่วยเหลือ</h4>
-                <ul className="space-y-2">
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">คำถามที่พบบ่อย</a></li>
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">ติดต่อเรา</a></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-500">
-            <p>&copy; {new Date().getFullYear()} BuddyPay. All rights reserved.</p>
-          </div>
+          <Link href="/share-bill" className={buttonVariants({ size: 'lg' })}>
+            เริ่มหารบิล
+          </Link>
+        </div>
+      </section>
+
+      <footer className="mt-auto border-t border-border bg-card py-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            <span className="font-semibold text-foreground">BuddyPay</span> แอปหารบิลกับเพื่อน
+          </p>
+          <nav aria-label="ลิงก์ท้ายหน้า" className="flex gap-5">
+            <Link href="/share-bill" className="hover:text-foreground">หารบิล</Link>
+            <Link href="/bill-history" className="hover:text-foreground">ประวัติบิล</Link>
+            <Link href="/statistics" className="hover:text-foreground">สถิติ</Link>
+          </nav>
         </div>
       </footer>
     </div>
   );
-} 
+}

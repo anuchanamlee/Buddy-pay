@@ -1,3 +1,5 @@
+'use client';
+
 import { cn } from "@/lib/utils"
 import React, { forwardRef, useState } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -83,9 +85,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {isPasswordField && (
             <button
               type="button"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+              className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-gray-500 transition-colors hover:text-gray-700"
               onClick={() => setShowPassword(!showPassword)}
-              tabIndex={-1}
+              aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+              aria-pressed={showPassword}
             >
               {showPassword ? (
                 <EyeOffIcon className="h-4 w-4" />

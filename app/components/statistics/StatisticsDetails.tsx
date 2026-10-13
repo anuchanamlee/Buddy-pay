@@ -1,106 +1,98 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/Card';
+import { CheckCircle2, Clock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/Card';
+import { formatTHB, formatThaiDate } from '@/app/lib/format';
 import { StatisticsData, PopularCategory } from '@/app/hooks/useStatistics';
 
 interface StatisticsDetailsProps {
   stats: StatisticsData;
   popularCategories: PopularCategory[];
-  renderSafeAmount: (amount: number) => string;
+  /** ไม่ใช้แล้ว (ใช้ formatTHB แทน) คงไว้เพื่อไม่ให้ผู้เรียกเดิมพัง */
+  renderSafeAmount?: (amount: number) => string;
   calculatePercentage: (a: number, b: number) => number;
 }
 
-export const StatisticsDetails = ({ 
-  stats, 
-  popularCategories, 
-  renderSafeAmount, 
-  calculatePercentage 
+export const StatisticsDetails = ({
+  stats,
+  popularCategories,
+  calculatePercentage,
 }: StatisticsDetailsProps) => {
   return (
-    <>
-      {/* การ์ดแสดงข้อมูลการชำระเงิน */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-8">
-        <Card>
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-base sm:text-lg">สถานะการชำระเงิน</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">ข้อมูลการชำระเงินของบิลทั้งหมด</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            <div className="flex justify-around py-4">
-              <div className="text-center">
-                <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.settledBills}</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">ชำระแล้ว</div>
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">สถานะการชำระเงิน</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="flex items-center justify-center gap-1 text-success-700">
+                <CheckCircle2 className="h-4 w-4" aria-hidden />
+                <span className="text-xl font-bold tabular-nums sm:text-2xl">{stats.settledBills}</span>
               </div>
-              <div className="text-center">
-                <div className="text-xl sm:text-2xl font-bold text-amber-600">{stats.pendingBills}</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">รอชำระ</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xl sm:text-2xl font-bold">{calculatePercentage(stats.settledBills, stats.totalBills)}%</div>
-                <div className="text-xs sm:text-sm text-muted-foreground">อัตราการชำระ</div>
-              </div>
+              <div className="text-sm text-muted-foreground">จ่ายแล้ว</div>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="p-4 sm:p-6">
-            <CardTitle className="text-base sm:text-lg">บิลที่มีมูลค่าสูงสุด</CardTitle>
-            <CardDescription className="text-xs sm:text-sm">รายละเอียดบิลที่มีมูลค่าสูงที่สุด</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-6 pt-0">
-            <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-bold text-base sm:text-lg mb-3 truncate">
-                {stats.mostExpensiveBill.title || 'ไม่มีข้อมูล'}
-              </h3>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs sm:text-sm text-muted-foreground">วันที่</span>
-                <span className="text-xs sm:text-sm">
-                  {stats.mostExpensiveBill.date.toLocaleDateString('th-TH', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </span>
+            <div>
+              <div className="flex items-center justify-center gap-1 text-warning-700">
+                <Clock className="h-4 w-4" aria-hidden />
+                <span className="text-xl font-bold tabular-nums sm:text-2xl">{stats.pendingBills}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs sm:text-sm text-muted-foreground">ยอดรวม</span>
-                <span className="font-bold text-lg sm:text-xl">
-                  {renderSafeAmount(stats.mostExpensiveBill.amount)} บาท
-                </span>
-              </div>
+              <div className="text-sm text-muted-foreground">รอจ่าย</div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            <div>
+              <div className="text-xl font-bold tabular-nums sm:text-2xl">
+                {calculatePercentage(stats.settledBills, stats.totalBills)}%
+              </div>
+              <div className="text-sm text-muted-foreground">จ่ายครบแล้ว</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* หมวดหมู่ยอดนิยม */}
-      <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>หมวดหมู่ยอดนิยม</CardTitle>
-            <CardDescription>หมวดหมู่ค่าใช้จ่ายที่ใช้บ่อยที่สุด</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {popularCategories && popularCategories.length > 0 ? (
-              <ul className="space-y-2">
-                {popularCategories.map(category => (
-                  <li key={category.id} className="flex items-center">
-                    <div 
-                      className="w-4 h-4 rounded-full mr-2" 
-                      style={{ backgroundColor: category.color }}
-                    ></div>
-                    <span>{category.name}</span>
-                    {category.count && (
-                      <span className="ml-auto text-muted-foreground">{category.count} บิล</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-muted-foreground text-center py-4">ไม่มีหมวดหมู่ยอดนิยม</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">บิลที่ยอดสูงสุด</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="truncate font-semibold">{stats.mostExpensiveBill.title || 'ไม่มีข้อมูล'}</p>
+          <div className="mt-2 flex items-baseline justify-between gap-3">
+            <span className="text-sm text-muted-foreground">
+              {formatThaiDate(stats.mostExpensiveBill.date, { withTime: false })}
+            </span>
+            <span className="text-xl font-bold tabular-nums">
+              {formatTHB(stats.mostExpensiveBill.amount)} บาท
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="text-lg">หมวดที่ใช้บ่อย</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {popularCategories && popularCategories.length > 0 ? (
+            <ul className="divide-y divide-border">
+              {popularCategories.map((category) => (
+                <li key={category.id} className="flex items-center gap-2 py-2">
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: category.color }}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 truncate">{category.name}</span>
+                  {category.count && (
+                    <span className="ml-auto shrink-0 text-sm tabular-nums text-muted-foreground">
+                      {category.count} บิล
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="py-2 text-muted-foreground">ยังไม่มีข้อมูลหมวด</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
-}; 
+};

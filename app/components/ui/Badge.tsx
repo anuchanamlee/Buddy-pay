@@ -23,22 +23,22 @@ const badgeVariants = cva(
       {
         variant: "default",
         isGradient: true,
-        class: "border-transparent bg-gradient-to-r from-primary to-secondary text-white",
+        class: "border-transparent bg-jade-100 text-jade-800",
       },
       {
         variant: "success",
         isGradient: true,
-        class: "border-transparent bg-gradient-to-r from-success-500 to-[#10B981] text-white",
+        class: "border-transparent bg-success-50 text-success-700",
       },
       {
         variant: "warning",
         isGradient: true,
-        class: "border-transparent bg-gradient-to-r from-warning-500 to-warning-400 text-white",
+        class: "border-transparent bg-warning-50 text-warning-700",
       },
       {
         variant: "danger",
         isGradient: true,
-        class: "border-transparent bg-gradient-to-r from-destructive to-danger-400 text-white",
+        class: "border-transparent bg-red-50 text-red-700",
       },
     ],
     defaultVariants: {

@@ -3,14 +3,14 @@ import { cva, type VariantProps } from "class-variance-authority"
 import React from "react"
 
 const cardVariants = cva(
-  "rounded-lg border bg-card text-card-foreground shadow-sm transition-all duration-200",
+  "rounded-xl border bg-card text-card-foreground transition-colors duration-200",
   {
     variants: {
       variant: {
         default: "border-border",
         accent: "border-border border-l-4 border-l-primary",
-        interactive: "border-border hover:border-primary hover:-translate-y-0.5 hover:shadow-md cursor-pointer",
-        gradient: "relative border-transparent before:absolute before:inset-0 before:rounded-lg before:p-[1px] before:bg-gradient-to-r before:from-primary before:to-secondary before:-z-10 hover:-translate-y-0.5 hover:shadow-md"
+        interactive: "border-border hover:border-jade-300 cursor-pointer",
+        gradient: "border-jade-200 bg-jade-50/40"
       },
     },
     defaultVariants: {
@@ -53,7 +53,7 @@ const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-xl font-semibold leading-none tracking-tight",
+      "text-lg font-semibold leading-snug",
       className
     )}
     {...props}

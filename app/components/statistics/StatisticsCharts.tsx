@@ -1,8 +1,10 @@
+import { formatTHB } from '@/app/lib/format';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/Card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { StatisticsData, CategoryStats } from '@/app/hooks/useStatistics';
 
-const COLORS = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
+// ชุดสีกราฟของแบรนด์ (ดู /design) เรียงให้สีติดกันต่างกันชัด
+const COLORS = ['#146F68', '#F5B33A', '#73C9BC', '#5B6472', '#D98A0B', '#A8E0D7'];
 
 interface StatisticsChartsProps {
   stats: StatisticsData;
@@ -11,32 +13,31 @@ interface StatisticsChartsProps {
 
 export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
       {/* กราฟแท่งแสดงค่าใช้จ่ายรายเดือน */}
       <Card>
         <CardHeader>
           <CardTitle>ค่าใช้จ่ายรายเดือน</CardTitle>
-          <CardDescription>ยอดรวมค่าใช้จ่ายในแต่ละเดือนที่ผ่านมา</CardDescription>
+          <CardDescription>ยอดรวมในแต่ละเดือน</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={stats.monthlyExpenses}
-                margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+                margin={{ top: 10, right: 8, left: 0, bottom: 10 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip 
-                  formatter={(value: number) => [`${value.toLocaleString()} บาท`, 'ยอดรวม']}
+                  formatter={(value: number) => [`${formatTHB(value)} บาท`, 'ยอดรวม']}
                   labelFormatter={(label: string) => {
                     const item = stats.monthlyExpenses.find(item => item.name === label);
                     return item ? `เดือน${item.month}` : label;
                   }}
                 />
-                <Legend />
-                <Bar dataKey="value" name="ยอดรวม (บาท)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="value" name="ยอดรวม (บาท)" fill="#146F68" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -46,11 +47,11 @@ export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps
       {/* กราฟวงกลมแสดงค่าใช้จ่ายตามหมวดหมู่ */}
       <Card>
         <CardHeader>
-          <CardTitle>ค่าใช้จ่ายตามหมวดหมู่</CardTitle>
-          <CardDescription>สัดส่วนค่าใช้จ่ายแบ่งตามหมวดหมู่</CardDescription>
+          <CardTitle>ค่าใช้จ่ายตามหมวด</CardTitle>
+          <CardDescription>สัดส่วนแยกตามหมวด</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -64,15 +65,15 @@ export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps
                   // แสดงแค่เปอร์เซ็นต์ ชื่อหมวดอยู่ใน legend ด้านล่าง (ชื่อยาวถูกตัดบนจอมือถือ)
                   label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                 >
-                  {categoryStats.map((entry, index) => (
+                  {categoryStats.map((_entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={entry.color || COLORS[index % COLORS.length]}
+                      fill={COLORS[index % COLORS.length]}
                     />
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value) => `${Number(value).toLocaleString()} บาท`}
+                  formatter={(value) => `${formatTHB(Number(value))} บาท`}
                   contentStyle={{ borderRadius: '8px', padding: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
               </PieChart>
@@ -85,9 +86,9 @@ export const StatisticsCharts = ({ stats, categoryStats }: StatisticsChartsProps
               <div key={`legend-${index}`} className="flex items-center min-w-0">
                 <div 
                   className="w-3 h-3 rounded-full mr-2 flex-shrink-0" 
-                  style={{ backgroundColor: entry.color || COLORS[index % COLORS.length] }}
+                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
                 ></div>
-                <span className="text-xs sm:text-sm truncate">{entry.name}</span>
+                <span className="truncate text-sm">{entry.name}</span>
               </div>
             ))}
           </div>

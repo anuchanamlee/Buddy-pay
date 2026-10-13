@@ -1,7 +1,6 @@
 // นำเข้าประเภท Metadata จาก Next.js เพื่อระบุข้อมูลเมตาของหน้าเว็บ
 import type { Metadata, Viewport } from "next";
-// นำเข้า Font "Inter" จาก Google Fonts
-import { Inter } from "next/font/google";
+import { IBM_Plex_Sans_Thai } from "next/font/google";
 // นำเข้าไฟล์สไตล์ globals.css สำหรับกำหนดสไตล์ทั่วโลก
 import "./globals.css";
 // นำเข้าคอมโพเนนต์ Providers สำหรับครอบคลุม Context ต่างๆ (เช่น authentication, theme, ฯลฯ)
@@ -12,33 +11,14 @@ import { AuthModalProvider } from './context/AuthModalContext';
 import AppShell from './components/AppShell';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorMonitoringProvider from './components/providers/ErrorMonitoringProvider';
-import { Open_Sans, Prompt } from 'next/font/google';
 
-// กำหนดการใช้งานฟอนต์ Inter พร้อมกำหนด subset ของตัวอักษรที่ใช้ (latin)
-const inter = Inter({ 
-  subsets: ["latin", "latin-ext"], // เพิ่ม latin-ext
-  display: 'swap', // เพิ่ม display swap เพื่อให้ข้อความแสดงผลด้วยฟอนต์สำรองก่อน
-  preload: true,   // preload ฟอนต์
-  fallback: ['system-ui', 'arial', 'sans-serif'] // เพิ่ม fallback fonts
-});
-
-// Preload และกำหนดขนาด subset เพื่อลดเวลาโหลดฟอนต์
-const openSans = Open_Sans({
-  subsets: ['latin'],
+// ฟอนต์เดียวทั้งแอป: มีทั้งไทยและละติน ตัวเลขอ่านง่าย (เดิมโหลด Inter + Open Sans + Prompt)
+const plexThai = IBM_Plex_Sans_Thai({
+  subsets: ['thai', 'latin'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
-  preload: true,
+  variable: '--font-plex-thai',
   fallback: ['system-ui', 'sans-serif'],
-  weight: ['400', '500', '600', '700'], // โหลดเฉพาะ weights ที่ใช้
-  variable: '--font-open-sans'
-});
-
-// สำหรับฟอนต์ภาษาไทย
-const prompt = Prompt({
-  weight: ['400', '500'],
-  subsets: ['thai'],
-  display: 'swap',
-  preload: true,
-  variable: '--font-prompt'
 });
 
 // กำหนด metadata ของแอปพลิเคชัน
@@ -52,10 +32,6 @@ export const metadata: Metadata = {
   },
   // เพิ่มสำหรับ PWA
   manifest: '/manifest.json',
-  // ลดขนาด bundle
-  alternates: {
-    canonical: 'https://buddypay.app',
-  },
   formatDetection: {
     telephone: true,
     address: false,
@@ -70,7 +46,7 @@ export const viewport: Viewport = {
   maximumScale: 5,
   minimumScale: 1,
   userScalable: true, // ให้ผู้ใช้ซูมได้เพื่อความเป็น accessibility
-  themeColor: '#4f46e5',
+  themeColor: '#146F68',
   colorScheme: 'light',
 };
 
@@ -84,52 +60,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="th" className={`${inter.className} ${openSans.variable} ${prompt.variable}`} suppressHydrationWarning>
+    <html lang="th" className={plexThai.variable} suppressHydrationWarning>
       <head>
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preconnect"
-          href="https://firebaseapp.com"
-          crossOrigin="anonymous"
-        />
-        {/* ใช้ style tag แบบ inline ดีกว่าสำหรับ critical CSS */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          /* Critical CSS for LCP */
-          .bg-gradient-to-r.from-primary.to-secondary {
-            background-image: linear-gradient(to right, #3b82f6, #4f46e5);
-          }
-          h1.text-4xl.md\\:text-5xl.font-bold.leading-tight {
-            font-size: 2.25rem;
-            line-height: 2.5rem;
-            font-weight: 700;
-            margin-top: 0;
-            color: white;
-          }
-          @media (min-width: 768px) {
-            h1.text-4xl.md\\:text-5xl.font-bold.leading-tight {
-              font-size: 3rem;
-              line-height: 1;
-            }
-          }
-        `}} />
-        {/* Preload fonts และ critical assets */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        
-        {/* Add DNS prefetching for external resources */}
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        
-        {/* Set viewport */}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="preconnect" href="https://firebaseapp.com" crossOrigin="anonymous" />
         {/* เพิ่ม favicon ขนาดต่างๆ */}
         <link rel="icon" type="image/png" href="/icon-192x192.png" sizes="192x192" />
         <link rel="icon" type="image/png" href="/icon-512x512.png" sizes="512x512" />
       </head>
-      <body className="bg-gray-50">
+      <body className="bg-background font-sans text-foreground antialiased">
         <ErrorBoundary componentName="RootLayout" level="critical">
           <Providers>
             <FirebaseProvider>

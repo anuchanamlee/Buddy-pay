@@ -1,98 +1,62 @@
+import type { ReactNode } from 'react';
 import { Card, CardContent } from '@/app/components/ui/Card';
-import { DollarSign, TrendingUp, ShoppingBag, Calendar, AlertTriangle, Users } from 'lucide-react';
+import { Wallet, TrendingUp, ReceiptText, Tag, Users, Clock } from 'lucide-react';
+import { formatTHB } from '@/app/lib/format';
+import { cn } from '@/lib/utils';
 import { StatisticsData } from '@/app/hooks/useStatistics';
 
 interface StatisticsCardsProps {
   stats: StatisticsData;
-  renderSafeAmount: (amount: number) => string;
+  /** ไม่ใช้แล้ว (ใช้ formatTHB แทน) คงไว้เพื่อไม่ให้ผู้เรียกเดิมพัง */
+  renderSafeAmount?: (amount: number) => string;
 }
 
-export const StatisticsCards = ({ stats, renderSafeAmount }: StatisticsCardsProps) => {
+interface StatItem {
+  label: string;
+  value: ReactNode;
+  icon: ReactNode;
+  pending?: boolean;
+}
+
+export const StatisticsCards = ({ stats }: StatisticsCardsProps) => {
+  const items: StatItem[] = [
+    { label: 'จำนวนบิลทั้งหมด', value: `${stats.totalBills || 0} บิล`, icon: <ReceiptText className="h-5 w-5" aria-hidden /> },
+    { label: 'ยอดรวมทั้งหมด', value: `${formatTHB(stats.totalAmount)} บาท`, icon: <Wallet className="h-5 w-5" aria-hidden /> },
+    { label: 'ค่าใช้จ่ายเฉลี่ยต่อบิล', value: `${formatTHB(stats.averageAmount)} บาท`, icon: <TrendingUp className="h-5 w-5" aria-hidden /> },
+    { label: 'หมวดที่ใช้บ่อยสุด', value: stats.mostFrequentCategory || 'ไม่มีข้อมูล', icon: <Tag className="h-5 w-5" aria-hidden /> },
+    { label: 'คนที่ยังไม่จ่าย', value: `${stats.pendingParticipants?.length || 0} คน`, icon: <Users className="h-5 w-5" aria-hidden />, pending: true },
+    { label: 'ยอดที่รอจ่าย', value: `${formatTHB(stats.totalPendingAmount || 0)} บาท`, icon: <Clock className="h-5 w-5" aria-hidden />, pending: true },
+  ];
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
-      <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
-        <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-500 rounded-lg text-white mr-3 sm:mr-4 flex-shrink-0">
-              <ShoppingBag size={20} className="sm:w-6 sm:h-6" />
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      {items.map((item) => (
+        <Card key={item.label}>
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div
+                className={cn(
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                  item.pending ? 'bg-warning-50 text-warning-700' : 'bg-jade-50 text-jade-700',
+                )}
+              >
+                {item.icon}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">{item.label}</p>
+                <p
+                  className={cn(
+                    'break-words text-lg font-bold leading-tight tabular-nums sm:text-2xl',
+                    item.pending && 'text-warning-700',
+                  )}
+                >
+                  {item.value}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-blue-700">จำนวนบิลทั้งหมด</p>
-              <h3 className="text-lg sm:text-2xl font-bold tabular-nums break-words leading-tight">{stats.totalBills || 0} บิล</h3>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100">
-        <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-emerald-500 rounded-lg text-white mr-3 sm:mr-4 flex-shrink-0">
-              <DollarSign size={20} className="sm:w-6 sm:h-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-emerald-700">ยอดรวมทั้งหมด</p>
-              <h3 className="text-lg sm:text-2xl font-bold tabular-nums break-words leading-tight">{renderSafeAmount(stats.totalAmount)} บาท</h3>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-gradient-to-br from-amber-50 to-amber-100">
-        <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-amber-500 rounded-lg text-white mr-3 sm:mr-4 flex-shrink-0">
-              <TrendingUp size={20} className="sm:w-6 sm:h-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-amber-700">ค่าใช้จ่ายเฉลี่ย</p>
-              <h3 className="text-lg sm:text-2xl font-bold tabular-nums break-words leading-tight">{renderSafeAmount(stats.averageAmount)} บาท</h3>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
-        <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-500 rounded-lg text-white mr-3 sm:mr-4 flex-shrink-0">
-              <Calendar size={20} className="sm:w-6 sm:h-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-purple-700">หมวดหมู่ยอดนิยม</p>
-              <h3 className="text-lg sm:text-2xl font-bold tabular-nums break-words leading-tight">{stats.mostFrequentCategory || 'ไม่มีข้อมูล'}</h3>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-gradient-to-br from-red-50 to-red-100">
-        <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-red-500 rounded-lg text-white mr-3 sm:mr-4 flex-shrink-0">
-              <Users size={20} className="sm:w-6 sm:h-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-red-700">ผู้ค้างชำระ</p>
-              <h3 className="text-lg sm:text-2xl font-bold tabular-nums break-words leading-tight">{stats.pendingParticipants?.length || 0} คน</h3>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-gradient-to-br from-orange-50 to-orange-100">
-        <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-500 rounded-lg text-white mr-3 sm:mr-4 flex-shrink-0">
-              <AlertTriangle size={20} className="sm:w-6 sm:h-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm font-medium text-orange-700">เงินค้างชำระ</p>
-              <h3 className="text-lg sm:text-2xl font-bold tabular-nums break-words leading-tight">{renderSafeAmount(stats.totalPendingAmount || 0)} บาท</h3>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
-}; 
+};

@@ -36,6 +36,9 @@ describe('formatTHB', () => {
     expect(formatTHB(133.33)).toBe('133.33');
     expect(formatTHB(130)).toBe('130');
     expect(formatTHB(1415)).toBe('1,415');
+    expect(formatTHB(212.5)).toBe('212.50');
+    expect(formatTHB(84.7)).toBe('84.70');
+    expect(formatTHB(99.999)).toBe('100');
   });
   it('ค่าที่ไม่ใช่ตัวเลขแสดงเป็น 0', () => {
     expect(formatTHB(undefined)).toBe('0');
