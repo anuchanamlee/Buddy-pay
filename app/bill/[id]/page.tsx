@@ -544,7 +544,7 @@ function BillDetailContent() {
                         <div className="flex-1">
                           <p className="font-medium">{item.name}</p>
                           <p className="text-sm text-gray-500">
-                            {Number(item.price || 0).toLocaleString()} บาท
+                            {formatTHB(Number(item.price || 0))} บาท
                           </p>
                         </div>
                         <div className="text-right">

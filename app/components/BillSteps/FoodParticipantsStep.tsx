@@ -1,3 +1,4 @@
+import { formatTHB } from '@/app/lib/format';
 import { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Badge } from '../ui/Badge';
 import { BillState } from '../../lib/billTypes';
@@ -119,7 +120,7 @@ export default function FoodParticipantsStep({
                             {item.name || `รายการที่ ${index + 1}`}
                           </h4>
                           <p className="text-sm text-gray-500">
-                            ราคา: {item.price.toLocaleString()} บาท
+                            ราคา: {formatTHB(item.price)} บาท
                           </p>
                         </div>
                       </div>
@@ -138,7 +139,7 @@ export default function FoodParticipantsStep({
                         </Badge>
                         {item.participants.length > 0 && (
                           <Badge variant="outline" className="text-xs">
-                            {(item.price / item.participants.length).toLocaleString()} บาท/คน
+                            {formatTHB(item.price / item.participants.length)} บาท/คน
                           </Badge>
                         )}
 

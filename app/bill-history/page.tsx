@@ -1,6 +1,6 @@
 'use client';
 
-import { formatThaiDate } from '@/app/lib/format';
+import { formatThaiDate, formatTHB } from '@/app/lib/format';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import LoginPrompt from '../components/LoginPrompt';
@@ -493,7 +493,7 @@ export default function BillHistory() {
                       <span className="text-xs sm:text-sm">{bill.participants?.length || 0} คน</span>
                     </div>
                     <div className="font-medium text-sm sm:text-base">
-                      {bill.totalAmount?.toLocaleString() || 0} บาท
+                      {formatTHB(bill.totalAmount)} บาท
                     </div>
                   </div>
                 </CardContent>
