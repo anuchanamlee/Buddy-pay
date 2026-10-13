@@ -29,10 +29,6 @@ Hook `usePendingBills` ใน `app/components/Navbar.tsx` ทำงานดั�
 
 - ใช้ `onSnapshot` ติดตามบิลของผู้ใช้ (`userId == uid`) ล่าสุด 100 ใบ แบบ real-time
 - นับเฉพาะบิลที่ใน `participants` มีคนสถานะ `pending`
-- รวมยอดค้างจากฟิลด์ `participants[].amount`
+- รวมยอดค้างโดยคำนวณยอดของแต่ละคนใหม่ด้วย `billShares` (`app/lib/billShares.ts`) จากข้อมูลบิล
 
 ดังนั้นการแจ้งเตือนนี้มีไว้ให้ **เจ้าของบิล** รู้ว่าบิลไหนยังเก็บเงินไม่ครบ ไม่ใช่การแจ้งเตือนถึงคนที่ค้างจ่าย
-
-## 3. ฟังก์ชันสำหรับบิลเดียว
-
-`app/utils/statistics.ts` มีฟังก์ชันอีกชุด ได้แก่ `getPendingParticipantsFromSplitResults`, `calculateTotalPendingAmount` และ `formatPendingParticipantsText` ซึ่งกรองเฉพาะคนที่ยอดมากกว่า 0 แต่ **ตอนนี้ยังไม่มีหน้าไหนเรียกใช้**
