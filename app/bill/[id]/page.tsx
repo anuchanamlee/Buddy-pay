@@ -4,6 +4,9 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { Bill, FoodItem } from "../../lib/schema";
+import { calculateSplit } from "../../lib/billCalculator";
+import { PerPersonPromptPayQR, sanitizePromptPayId } from "../../components/PromptPayQR";
+import { formatTHB } from "../../lib/format";
 import { useParams, useRouter } from "next/navigation";
 import { FirebaseProvider, useFirebase } from "../../components/providers/FirebaseWrapper";
 import { useAuthModal } from "../../context/AuthModalContext";
@@ -15,7 +18,7 @@ import { CategoryIcon } from "../../components/CategorySelect";
 /**
  * Types
  */
-type BillWithId = Bill & { id: string; splitResults?: any[] };
+type BillWithId = Bill & { id: string; splitResults?: any[]; promptPayId?: string };
 type FireTS = { seconds: number; nanoseconds: number };
 
 /**
@@ -113,11 +116,13 @@ function BillDetailContent() {
   /**
    * Pure computations (memoized)
    */
+  // ใช้สูตรเดียวกับหน้าผลลัพธ์ (billCalculator) ยอดจึงตรงกันทุกหน้า
+  // เดิมหน้านี้คิดค่าบริการจากค่าอาหารแทนยอดหลัง VAT และไม่ปัดเป็นสตางค์
   const totals = useMemo(() => {
     if (!bill) return { food: 0, vatAmt: 0, svcAmt: 0, discount: 0, grand: 0 };
-    const food = (bill.foodItems || []).reduce((s, it) => s + (it.price || 0), 0);
+    const food = (bill.foodItems || []).reduce((s, it) => s + (Number(it.price) || 0), 0);
     const vatAmt = (food * (bill.vat || 0)) / 100;
-    const svcAmt = (food * (bill.serviceCharge || 0)) / 100;
+    const svcAmt = ((food + vatAmt) * (bill.serviceCharge || 0)) / 100;
     const discount = bill.discount || 0;
     const grand = Math.max(0, food + vatAmt + svcAmt - discount);
     return { food, vatAmt, svcAmt, discount, grand };
@@ -126,35 +131,16 @@ function BillDetailContent() {
   const participantShares = useMemo(() => {
     if (!bill) return {} as Record<string, number>;
     const shares: Record<string, number> = {};
-    const { participants = [], foodItems = [], splitMethod } = bill;
-
-    if (participants.length === 0) return shares;
-
-    if (splitMethod === "equal") {
-      const each = totals.grand / participants.length;
-      participants.forEach((p) => (shares[p.id] = each));
-      return shares;
-    }
-
-    // itemized base
-    participants.forEach((p) => (shares[p.id] = 0));
-    foodItems.forEach((item) => {
-      const list = item.participants?.length ? item.participants : [];
-      if (list.length) {
-        const per = (item.price || 0) / list.length;
-        list.forEach((pid) => (shares[pid] = (shares[pid] || 0) + per));
-      }
-    });
-
-    const baseSum = Object.values(shares).reduce((a, b) => a + b, 0);
-    if (baseSum > 0) {
-      Object.keys(shares).forEach((pid) => {
-        const r = shares[pid] / baseSum;
-        shares[pid] = shares[pid] + totals.vatAmt * r + totals.svcAmt * r - totals.discount * r;
-      });
-    }
+    calculateSplit({
+      ...bill,
+      foodItems: (bill.foodItems || []).map((it) => ({ ...it, price: Number(it.price) || 0, participants: it.participants || [] })),
+      participants: bill.participants || [],
+      vat: bill.vat || 0,
+      serviceCharge: bill.serviceCharge || 0,
+      discount: bill.discount || 0,
+    }).forEach((r) => (shares[r.participant.id] = r.amount));
     return shares;
-  }, [bill, totals]);
+  }, [bill]);
 
   const unassignedParticipants = useMemo(() => {
     if (!bill || bill.splitMethod !== "itemized") return [] as string[];
@@ -755,35 +741,56 @@ function BillDetailContent() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">ยอดรวมค่าอาหาร</span>
-                  <span className="font-medium">{totals.food.toLocaleString()} บาท</span>
+                  <span className="font-medium">{formatTHB(totals.food)} บาท</span>
                 </div>
                 {bill.vat > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">VAT ({bill.vat}%)</span>
-                    <span className="font-medium">{totals.vatAmt.toLocaleString()} บาท</span>
+                    <span className="font-medium">{formatTHB(totals.vatAmt)} บาท</span>
                   </div>
                 )}
                 {bill.serviceCharge > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">ค่าบริการ ({bill.serviceCharge}%)</span>
-                    <span className="font-medium">{totals.svcAmt.toLocaleString()} บาท</span>
+                    <span className="font-medium">{formatTHB(totals.svcAmt)} บาท</span>
                   </div>
                 )}
                 {bill.discount > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">ส่วนลด</span>
-                    <span className="font-medium text-green-600">- {totals.discount.toLocaleString()} บาท</span>
+                    <span className="font-medium text-green-600">- {formatTHB(totals.discount)} บาท</span>
                   </div>
                 )}
                 <div className="pt-3 border-t">
                   <div className="flex justify-between items-center font-bold">
                     <span>ยอดรวมทั้งสิ้น</span>
-                    <span className="text-lg text-primary">{totals.grand.toLocaleString()} บาท</span>
+                    <span className="text-lg text-primary">{formatTHB(totals.grand)} บาท</span>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* QR พร้อมเพย์ของแต่ละคน (เฉพาะบิลที่บันทึกเลขพร้อมเพย์ไว้) */}
+          {!isEditMode && sanitizePromptPayId(bill.promptPayId) && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>ให้เพื่อนสแกนจ่าย</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PerPersonPromptPayQR
+                  promptPayId={bill.promptPayId as string}
+                  people={(bill.participants || []).map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    amount: participantShares[p.id] || 0,
+                    paid: p.status === "paid",
+                  }))}
+                />
+                <p className="mt-3 text-center text-xs text-gray-500">พร้อมเพย์ {bill.promptPayId}</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

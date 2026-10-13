@@ -380,6 +380,8 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
         foodItems: state.foodItems,
         participants: state.participants,
         splitResults: state.splitResults,
+        // เก็บเลขพร้อมเพย์ไว้ให้หน้ารายละเอียดบิลสร้าง QR ของแต่ละคนได้
+        ...(promptPayId.replace(/[^0-9]/g, '') ? { promptPayId: promptPayId.replace(/[^0-9]/g, '') } : {}),
         userId: user?.uid || '',
         userEmail: user?.email || '',
         createdAt: Timestamp.fromDate(new Date()),
@@ -404,7 +406,7 @@ export function useBillManagement(state: BillState, dispatch: React.Dispatch<any
       dispatch({ type: 'SET_LOADING', payload: false });
       setIsLoading(false);
     }
-  }, [isAuthenticated, state, user, router, showToast, openLoginModal, dispatch]);
+  }, [isAuthenticated, state, user, router, showToast, openLoginModal, dispatch, promptPayId]);
 
   // ฟังก์ชันโหลดบิลเพิ่มเติม
   const loadMoreBills = useCallback(async () => {

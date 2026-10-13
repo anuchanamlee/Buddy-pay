@@ -4,6 +4,7 @@ import { CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { BillState } from '../../lib/billTypes';
 import { User, ChevronDown, ChevronUp, Utensils, CreditCard, FileText, DollarSign, AlertCircle, Calendar, Users, Share2, Copy, Check, UserPlus, Save } from 'lucide-react';
 import QRCode from 'react-qr-code';
+import { PerPersonPromptPayQR } from '../PromptPayQR';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { useAuth } from '../../context/AuthContext';
@@ -552,8 +553,18 @@ export default function ResultStep({
                     
                     <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
                       <div className="flex flex-col items-center justify-center gap-4">
-                        {/* QR Code */}
-                        {qrPayload && (
+                        {/* QR พร้อมเพย์แยกตามคน ใส่ยอดของแต่ละคนไว้แล้ว */}
+                        {promptPayId && (state.splitResults || []).length > 0 ? (
+                          <PerPersonPromptPayQR
+                            promptPayId={promptPayId}
+                            people={(state.splitResults || []).map((r) => ({
+                              id: r.participant.id,
+                              name: r.participant.name,
+                              amount: r.amount,
+                              paid: r.participant.status === 'paid',
+                            }))}
+                          />
+                        ) : qrPayload ? (
                           <div className="text-center">
                             <p className="text-sm font-medium text-gray-700 mb-2">สแกนเพื่อชำระเงิน</p>
                             <div className="bg-white p-3 rounded-lg shadow-sm inline-block">
@@ -564,7 +575,7 @@ export default function ResultStep({
                               />
                             </div>
                           </div>
-                        )}
+                        ) : null}
                         
                         {/* PromptPay Info */}
                         {promptPayId && (
