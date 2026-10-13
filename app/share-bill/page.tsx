@@ -128,8 +128,8 @@ export default function ShareBillPage() {
   const missing = whatIsMissing(draft);
 
   return (
-    <div className="min-h-screen bg-background pb-8 pt-20">
-      <div ref={topRef} className="mx-auto max-w-2xl scroll-mt-20 px-4">
+    <div className="min-h-screen bg-background pb-8 pt-6">
+      <div ref={topRef} className="mx-auto max-w-2xl scroll-mt-24 px-4">
         {view === 'edit' ? (
           <>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">

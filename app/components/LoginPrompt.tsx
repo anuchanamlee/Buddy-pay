@@ -24,7 +24,7 @@ export default function LoginPrompt({ message = 'คุณยังไม่ไ�
           <div className="mt-3 text-sm md:mt-0 md:ml-6">
             <button
               onClick={openLoginModal}
-              className="whitespace-nowrap bg-blue-600 hover:bg-blue-700 text-white font-medium py-1 px-4 rounded text-sm transition-colors duration-150"
+              className="inline-flex min-h-[44px] items-center whitespace-nowrap rounded-[10px] bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-jade-700"
             >
               เข้าสู่ระบบ
             </button>

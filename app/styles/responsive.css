@@ -19,7 +19,9 @@
     min-width: 44px;
   }
   
-  button, .btn {
+  /* เดิมกำหนด padding ให้ <button> ทุกตัวบนมือถือ ซึ่งชนะ class ของ Tailwind (CSS นอก layer)
+     ทำให้ปุ่มไอคอนเล็กโดนบีบจนไอคอนหายไป ขนาดปุ่มกำหนดใน Button component แทน */
+  .btn {
     min-height: 44px;
     padding: 0.75rem 1rem;
   }

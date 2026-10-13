@@ -108,10 +108,10 @@ export default function SharedBillPage() {
   };
 
   // --- UI state: loading, error, not found ---
-  if (loading) return <div className="pt-28 text-center text-muted-foreground">กำลังโหลดบิล...</div>;
+  if (loading) return <div className="pt-12 text-center text-muted-foreground">กำลังโหลดบิล...</div>;
   if (error || !billData) {
     return (
-      <div className="mx-auto max-w-md px-4 pt-28 text-center">
+      <div className="mx-auto max-w-md px-4 pt-12 text-center">
         <h1 className="text-xl font-bold text-foreground">เปิดบิลนี้ไม่ได้</h1>
         <p className="mt-2 text-muted-foreground">{error || 'ไม่พบข้อมูลบิล'} ลิงก์ใช้ได้ 24 ชั่วโมงหลังสร้าง ขอลิงก์ใหม่จากคนที่ส่งมาได้</p>
         <Link href="/share-bill" className={cn(buttonVariants(), 'mt-6')}>หารบิลของคุณเอง</Link>
@@ -123,7 +123,7 @@ export default function SharedBillPage() {
   const total = billData.totalAmount || results.reduce((sum, r) => sum + r.amount, 0);
 
   return (
-    <div className="min-h-screen bg-background pb-12 pt-20">
+    <div className="min-h-screen bg-background pb-12 pt-6">
       <div className="mx-auto max-w-2xl px-4">
         <p className="mb-4 rounded-lg bg-jade-50 px-3 py-2 text-sm text-jade-900">
           บิลที่เพื่อนส่งมา ลิงก์ใช้ได้ถึง {formatThaiDate(billData.expiryDate)}

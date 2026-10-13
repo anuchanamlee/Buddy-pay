@@ -164,7 +164,8 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
             {/* Close button */}
             <button
               onClick={handleClose}
-              className="absolute right-4 top-4 rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full text-white/80 hover:bg-white/15 hover:text-white"
+              aria-label="ปิด"
             >
               <X size={20} />
             </button>
@@ -246,7 +247,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                     <button
                       type="button"
                       onClick={handleForgotPassword}
-                      className="text-sm font-medium text-blue-600 hover:underline"
+                      className="inline-flex min-h-[44px] items-center px-1 text-sm font-medium text-primary hover:underline"
                     >
                       ลืมรหัสผ่าน?
                     </button>
@@ -303,7 +304,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                     <button
                       type="button"
                       onClick={switchMode}
-                      className="font-medium text-primary hover:underline"
+                      className="inline-flex min-h-[44px] items-center px-1 font-medium text-primary hover:underline"
                     >
                       สมัครสมาชิก
                     </button>
@@ -314,7 +315,7 @@ export default function AuthModal({ isOpen, onClose, initialMode = 'login' }: Au
                     <button
                       type="button"
                       onClick={switchMode}
-                      className="font-medium text-primary hover:underline"
+                      className="inline-flex min-h-[44px] items-center px-1 font-medium text-primary hover:underline"
                     >
                       เข้าสู่ระบบ
                     </button>

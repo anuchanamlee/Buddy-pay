@@ -161,6 +161,14 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
                 commitNames(text);
               }
             }}
+            onKeyDown={(e) => {
+              // ใส่ชื่อครบแล้วกด Enter ที่ช่องว่าง = ไปใส่รายการต่อ ไม่ต้องแตะหน้าจอ
+              if (e.key === 'Enter' && !nameInput.trim() && people.length >= 2) {
+                e.preventDefault();
+                itemNameRef.current?.focus();
+              }
+            }}
+            autoFocus={people.length === 0}
             placeholder={people.length === 0 ? 'พิมพ์ชื่อแล้วกด Enter เช่น มิ้นท์' : 'เพิ่มอีกคน'}
             enterKeyHint="enter"
             autoComplete="off"
@@ -171,6 +179,10 @@ export function BillEditor({ draft, onDraftChange, extras, onExtrasChange, saved
             <span className="hidden sm:inline">เพิ่ม</span>
           </Button>
         </form>
+
+        {people.length >= 2 && (
+          <p className="mt-2 text-sm text-muted-foreground">ครบแล้วกด Enter ที่ช่องว่างเพื่อไปใส่รายการ</p>
+        )}
 
         {onSaveGroup && people.length >= 2 && (
           <button

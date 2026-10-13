@@ -44,7 +44,7 @@ function Section({ title, description, children }: { title: string; description:
 
 export default function DesignPage() {
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-20 pt-24">
+    <main className="mx-auto max-w-5xl px-4 pb-20 pt-10">
       <h1 className="text-4xl font-bold text-foreground">BuddyPay design system</h1>
       <p className="mt-3 max-w-[40rem] text-lg text-muted-foreground">
         สะอาด เป็นมิตร และให้ตัวเลขเป็นพระเอก ทุกหน้าใช้ token ชุดนี้จาก <code className="rounded bg-muted px-1.5 py-0.5 text-sm">app/globals.css</code>

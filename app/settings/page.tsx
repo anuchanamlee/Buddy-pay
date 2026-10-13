@@ -154,7 +154,7 @@ export default function SettingsPage() {
   const canConfirmDelete = usesPassword ? !!deletePassword : deleteConfirmText.trim() === 'ลบบัญชี';
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8 mt-16">
+    <div className="container max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">ตั้งค่าบัญชี</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
