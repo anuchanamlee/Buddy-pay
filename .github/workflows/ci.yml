@@ -79,3 +79,38 @@ jobs:
       # ใช้ demo project (demo-*) ซึ่ง Emulator รันแบบ offline ทั้งหมด ไม่ต้องล็อกอินและไม่แตะ Firebase จริง
       - name: Rules tests
         run: npm run test:rules
+
+  e2e:
+    name: E2E (หารบิลแบบผู้ใช้จริง)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      # build สำหรับทดสอบเท่านั้น ใช้โปรเจกต์ demo ที่ไม่มีอยู่จริง (ไม่ deploy)
+      # flow หารบิลไม่ต้องเชื่อม Firebase จึงทดสอบได้โดยไม่ใช้ค่าจริง
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          NEXT_PUBLIC_FIREBASE_API_KEY: demo-key
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: demo-buddypay.firebaseapp.com
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: demo-buddypay
+          NEXT_PUBLIC_FIREBASE_APP_ID: 1:000000000000:web:demo
+
+      - name: Start server and run E2E
+        run: |
+          npx next start -p 3100 &
+          for i in $(seq 1 60); do curl -sf http://localhost:3100/share-bill > /dev/null && break; sleep 1; done
+          npm run test:e2e
+        env:
+          BASE: http://localhost:3100

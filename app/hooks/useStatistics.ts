@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { billShares } from '@/app/lib/billShares';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '@/app/lib/firebase';
 import { Category, getCategoryById, getPopularCategories } from '@/app/lib/categories';
@@ -473,7 +474,8 @@ export const useStatistics = (user: any, loading: boolean) => {
                   : { id: p, name: p, status: 'pending' }
               )
             : [],
-          splitResults: data.splitResults || [],
+          // คำนวณยอดของแต่ละคนใหม่จากรายการ (บิลเก่าเก็บยอดที่คิดด้วยสูตรเดิม)
+          splitResults: billShares(data),
         };
       });
       

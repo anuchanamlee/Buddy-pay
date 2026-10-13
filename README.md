@@ -4,7 +4,9 @@
 
 สร้างด้วย Next.js 15 (App Router), React 19, TypeScript และ Firebase (Authentication + Firestore)
 
-> **สถานะ:** โปรเจกต์ส่วนตัวสำหรับ Portfolio **ยังไม่พร้อมใช้งาน Production** ดูรายละเอียดที่ [ข้อจำกัดที่ทราบ](#ข้อจำกัดที่ทราบ)
+> **ใช้งานจริง:** https://buddy-pay-eta.vercel.app · ดู design system ได้ที่ [`/design`](https://buddy-pay-eta.vercel.app/design)
+>
+> โปรเจกต์ส่วนตัวสำหรับ Portfolio ข้อจำกัดที่ยังเหลือดูที่ [ข้อจำกัดที่ทราบ](#ข้อจำกัดที่ทราบ)
 
 ---
 
@@ -27,11 +29,12 @@
 
 | ฟีเจอร์ | รายละเอียด | ไฟล์หลัก |
 |---|---|---|
-| สร้างบิลแบบหลายขั้นตอน | กรอกรายละเอียดบิล → ผู้ร่วมจ่าย → วิธีหาร → รายการอาหาร → คนที่กินแต่ละรายการ → ผลลัพธ์ | `app/share-bill/page.tsx`, `app/components/BillSteps/` |
-| คำนวณการหารบิล | **หารเท่ากัน** หรือ **หารตามรายการที่กิน** (VAT ค่าบริการ และส่วนลดกระจายตามสัดส่วนค่าอาหารของแต่ละคน) | `app/lib/billCalculator.ts` |
-| QR PromptPay | สร้าง QR สำหรับรับเงินจากเบอร์โทรหรือเลขบัตรประชาชน | `promptpay-qr`, `ResultStep.tsx` |
+| หารบิล 2 หน้า | หน้าเดียวใส่ชื่อเพื่อนและรายการ (พิมพ์ต่อด้วย Enter, แยกคนกินในรายการ, ไม่ต้องเลือกวิธีหาร) → หน้าผลลัพธ์ บิลง่าย ๆ ใช้ 2 หน้า กด 9 ครั้ง (เดิม 5 หน้า 18 ครั้ง) | `app/share-bill/page.tsx`, `app/components/bill/`, `app/lib/billDraft.ts` |
+| หารด่วน | ใส่ยอดท้ายใบเสร็จกับจำนวนคน ได้ยอดต่อคนและ QR ทันที | `app/components/bill/QuickSplit.tsx` |
+| คำนวณการหารบิล | VAT คิดจากค่าอาหาร ค่าบริการคิดจากยอดหลัง VAT ส่วนลดแบ่งตามสัดส่วน **คิดเป็นสตางค์** ยอดทุกคนรวมได้เท่ายอดบิลพอดี (100 หาร 3 = 33.34, 33.33, 33.33) | `app/lib/billCalculator.ts`, `app/lib/money.ts` |
+| QR PromptPay ของแต่ละคน | เลือกชื่อแล้วได้ QR ที่ใส่ยอดของคนนั้น จำเลขพร้อมเพย์ไว้ในเครื่อง | `app/components/PromptPayQR.tsx` |
 | ลิงก์แชร์ชั่วคราว | แชร์ผลการหารบิลได้โดยไม่ต้องล็อกอิน ลิงก์มีอายุ 24 ชั่วโมง | `app/api/share/`, `app/lib/share/` |
-| บันทึกและประวัติบิล | บันทึกบิลลง Firestore ดูย้อนหลังแบบแบ่งหน้า เปลี่ยนสถานะการจ่าย และลบบิล | `app/bill-history/`, `app/bill/[id]/` |
+| บันทึกและประวัติบิล | บันทึกบิลลง Firestore (ล็อกอินกลางทางแล้วบิลไม่หาย) ติ๊กคนที่จ่ายแล้วได้จากหน้าประวัติ (transaction กันเขียนทับ) แก้และลบบิลได้ | `app/bill-history/`, `app/bill/[id]/`, `app/components/history/` |
 | ผู้ค้างชำระ | สรุปว่าใครยังไม่จ่ายและยอดเท่าไร ทั้งในหน้าสถิติและแจ้งเตือนบน Navbar (real-time) | `app/hooks/useStatistics.ts`, `app/components/Navbar.tsx` |
 | สถิติการใช้จ่าย | กราฟรายเดือนและแยกตามหมวดหมู่ (Recharts) | `app/statistics/` |
 | กลุ่มผู้ร่วมจ่าย | บันทึกรายชื่อเพื่อนเป็นกลุ่ม เพื่อเลือกใช้ซ้ำ | `app/lib/services/participantGroupService.ts` |
@@ -91,7 +94,7 @@
 ```
 app/
 ├── api/                 API Routes (share, chat, errors)
-├── components/          UI components (BillSteps, statistics, ui, providers)
+├── components/          UI components (bill, history, statistics, ui, providers)
 ├── context/             AuthContext, AuthModalContext, ToastContext
 ├── hooks/               useBillManagement, useStatistics, useErrorHandler
 ├── lib/
@@ -150,9 +153,10 @@ npm run dev                  # http://localhost:3000
 
 ## การทดสอบ
 
-- **Unit tests** (`npm test`): การคำนวณบิล, API ลิงก์แชร์ (validation, rate limit, วันหมดอายุ) และ Next.js config/security headers
-- **Firestore Rules tests** (`npm run test:rules`): รันบน Firestore Emulator ด้วย demo project (`demo-*`) แบบ offline ทั้งหมด **ไม่แตะ Firebase จริง** ครอบคลุมทั้งกรณีที่ต้องอนุญาตและต้องปฏิเสธของ `users` และ `temporary_shared_bills` และมี integration test ที่ส่งข้อมูลจาก API จริงผ่าน Rules
-- **ยังไม่มี:** E2E tests ของ flow ล็อกอินและการบันทึกบิลกับ Firebase จริง
+- **Unit tests** (`npm test`, 87 รายการ): การคำนวณบิลและการแบ่งสตางค์, การแก้บิลระหว่างกรอก, QR พร้อมเพย์, การลบบัญชี, การติ๊กจ่าย, API ลิงก์แชร์ และ Next.js config/security headers
+- **Firestore Rules tests** (`npm run test:rules`): รันบน Firestore Emulator ด้วย demo project แบบ offline **ไม่แตะ Firebase จริง** ครอบคลุมการแยกข้อมูลระหว่างผู้ใช้ทุก collection
+- **E2E** (`npm run test:e2e`): Playwright กดแอปแบบผู้ใช้จริง 31 ข้อ เช่น หารบิลด้วยคีย์บอร์ดล้วน, แยกคนกิน, VAT/ค่าบริการ/ส่วนลด, หารด่วน, กรอกผิด, รีเฟรชแล้วบิลไม่หาย, ไม่ล้นจอที่ 360px (ต้อง `npm run build && npx next start -p 3100` ก่อน)
+- **ยังไม่มี:** E2E ของการล็อกอินและบันทึกบิลกับ Firebase Auth/Firestore Emulator
 
 ## CI
 
@@ -160,6 +164,7 @@ npm run dev                  # http://localhost:3000
 
 1. **Type-check, Lint, Unit tests, Build**
 2. **Firestore Rules tests** บน Emulator
+3. **E2E** ด้วย Playwright บน build ทดสอบ (ใช้ Firebase config ของโปรเจกต์ demo ที่ไม่มีอยู่จริง)
 
 ไม่ต้องใช้ secret ใด ๆ ถ้าต้องการให้ CI build ด้วยค่า Firebase จริง ให้ตั้ง **Repository variables** (ไม่ใช่ secrets เพราะค่าเหล่านี้เปิดเผยได้) ชื่อ `NEXT_PUBLIC_FIREBASE_*`
 
@@ -181,10 +186,8 @@ npm run dev                  # http://localhost:3000
 
 | เรื่อง | ผลกระทบ | ตำแหน่ง |
 |---|---|---|
-| Middleware ตรวจสิทธิ์จาก cookie ที่ตั้งฝั่ง client (ปลอมได้) และ redirect ไป `/login` / `/dashboard` ซึ่งไม่มีหน้าอยู่จริง | ทำหน้าที่ได้แค่ UX ส่วนข้อมูลยังมี Firestore Rules ป้องกันอยู่ | `middleware.ts` |
-| การปัดเศษรายคน | ผลรวมอาจไม่ตรงกับยอดบิล เช่น 100 บาทหาร 3 คนได้รวม 99.99 บาท | `app/lib/billCalculator.ts` |
-| เมื่อดึงข้อมูลล้มเหลว หน้าประวัติบิลแสดงข้อมูลตัวอย่าง | ผู้ใช้อาจเข้าใจผิดว่าเป็นข้อมูลจริง | `app/bill-history/page.tsx` |
 | หน้าสถิติดึงบิลทุกใบโดยไม่จำกัดจำนวน และหน้า Admin ดึงทั้ง collection เพื่อนับ | ช้าลงและค่า Firestore เพิ่มตามจำนวนข้อมูล | `app/hooks/useStatistics.ts`, `app/admin/components/DashboardStats.tsx` |
+| Middleware ตรวจสิทธิ์จาก cookie ที่ตั้งฝั่ง client (ปลอมได้) | ใช้เพื่อพาไปหน้าล็อกอินเท่านั้น ข้อมูลจริงมี Firestore Rules ป้องกัน | `middleware.ts` |
 | API ลิงก์แชร์ใช้ Firebase client SDK แบบไม่ล็อกอิน | ผู้ไม่หวังดีเขียนตรงเข้า Firestore ได้ (ภายใต้ข้อจำกัดของ Rules) โดยเลี่ยง rate limit ของ API | `app/api/share/create/route.ts` |
 | Rate limit เก็บในหน่วยความจำ | นับแยกตาม server instance และรีเซ็ตเมื่อ instance ถูกปิด | `app/lib/rateLimit.ts` |
 | JavaScript ที่โหลดครั้งแรกค่อนข้างหนัก | หน้าสถิติ 429 kB และหน้าสร้างบิล 360 kB | ผลจาก `npm run build` |
@@ -194,7 +197,6 @@ npm run dev                  # http://localhost:3000
 
 1. ย้าย API ที่เขียน Firestore ไปใช้ Firebase Admin SDK แล้วปิดการเขียนตรงจาก client ใน Rules
 2. ใช้ session cookie ที่ server ออกและตรวจได้ แทน cookie ที่ตั้งฝั่ง client ใน middleware
-3. แก้การปัดเศษให้ยอดรวมตรงกับยอดบิลเสมอ
-4. ใช้ `getCountFromServer` และจำกัดจำนวนข้อมูลในหน้าสถิติและหน้า Admin
-5. โหลดกราฟแบบ lazy (dynamic import) และลดจำนวนฟอนต์
-6. เพิ่ม E2E tests ด้วย Firebase Auth/Firestore Emulator
+3. ใช้ `getCountFromServer` และจำกัดจำนวนข้อมูลในหน้าสถิติและหน้า Admin
+4. โหลดกราฟแบบ lazy (dynamic import)
+5. เพิ่ม E2E ของการล็อกอินและบันทึกบิลด้วย Firebase Auth/Firestore Emulator

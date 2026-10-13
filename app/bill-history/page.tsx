@@ -47,6 +47,7 @@ export default function BillHistory() {
   // State สำหรับ pagination
   const [page, setPage] = useState(1);
   // บิลที่กำลังบันทึกอยู่ (หลายบิลพร้อมกันได้ แต่บิลเดียวกันห้ามซ้อน)
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [savingBills, setSavingBills] = useState<Set<string>>(() => new Set());
   const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({});
   const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
@@ -92,6 +93,7 @@ export default function BillHistory() {
       setPage(1);
       setLastDoc(null);
     }
+    setLoadError(null);
     
     try {
       setLoading(true);
@@ -161,30 +163,9 @@ export default function BillHistory() {
     } catch (error) {
       console.error('Error fetching bills:', error);
       
-      // ถ้าเกิดข้อผิดพลาดและเป็นการโหลดครั้งแรก ให้ใช้ข้อมูลตัวอย่าง
-      if (resetPagination && bills.length === 0) {
-        // เตรียมข้อมูลตัวอย่างให้มีรูปแบบที่ถูกต้อง
-        const preparedMockBills = mockBills.map(bill => ({
-          ...bill,
-          userId: 'mock-user-id', // เพิ่ม userId เพื่อให้สามารถใช้งานปุ่มชำระทั้งหมดได้
-          createdAt: bill.createdAt instanceof Date ? bill.createdAt : new Date(), // ตรวจสอบความถูกต้องของวันที่
-          date: bill.date instanceof Date ? bill.date : new Date() // ตรวจสอบความถูกต้องของวันที่
-        }));
-        setBills(preparedMockBills);
-      }
-      
-      if (bills.length > 0) {
-        return bills;
-      } else {
-        // เตรียมข้อมูลตัวอย่างให้มีรูปแบบที่ถูกต้อง
-        const preparedMockBills = mockBills.map(bill => ({
-          ...bill,
-          userId: 'mock-user-id', // เพิ่ม userId เพื่อให้สามารถใช้งานปุ่มชำระทั้งหมดได้
-          createdAt: bill.createdAt instanceof Date ? bill.createdAt : new Date(), // ตรวจสอบความถูกต้องของวันที่
-          date: bill.date instanceof Date ? bill.date : new Date() // ตรวจสอบความถูกต้องของวันที่
-        }));
-        return preparedMockBills;
-      }
+      // ล็อกอินอยู่แต่โหลดไม่สำเร็จ: บอกผู้ใช้ตรง ๆ และให้ลองใหม่ (เดิมแสดงข้อมูลตัวอย่างแทน ทำให้เข้าใจผิดว่าเป็นบิลจริง)
+      setLoadError('โหลดประวัติบิลไม่สำเร็จ ตรวจสอบอินเทอร์เน็ตแล้วกดลองอีกครั้ง');
+      return bills;
     } finally {
       setLoading(false);
     }
@@ -403,6 +384,14 @@ export default function BillHistory() {
         <LoginPrompt message="คุณกำลังดูข้อมูลตัวอย่าง" />
       )}
 
+      {loadError && (
+        <div role="alert" className="mb-4 flex flex-col gap-3 rounded-xl border border-destructive/30 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
+          <span>{loadError}</span>
+          <Button variant="outline" size="sm" onClick={() => { setLoading(true); fetchBills(true); }}>
+            ลองอีกครั้ง
+          </Button>
+        </div>
+      )}
       {loading && bills.length === 0 ? (
         <BillHistoryPageSkeleton />
       ) : bills.length > 0 ? (
@@ -521,7 +510,7 @@ export default function BillHistory() {
             </div>
           )}
         </>
-      ) : (
+      ) : loadError ? null : (
         <div className="text-center py-12 px-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
           <Receipt className="mx-auto mb-3 h-10 w-10 text-gray-400" aria-hidden="true" />
           <p className="font-semibold text-gray-800">ยังไม่มีบิลที่บันทึกไว้</p>

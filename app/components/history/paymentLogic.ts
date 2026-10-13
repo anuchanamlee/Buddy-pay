@@ -1,3 +1,4 @@
+import { shareOf } from '@/app/lib/billShares';
 // ตรรกะอัพเดตสถานะการจ่ายเงินของบิล ใช้ร่วมกับหน้าประวัติบิล
 // ผลลัพธ์ต้องตรงกับ updatePaymentStatus ในหน้ารายละเอียดบิล (participants, splitResults, status)
 
@@ -56,6 +57,9 @@ export function countPending(bill: PaymentBillLike): number {
 
 /** ยอดที่ผู้เข้าร่วมต้องจ่าย จาก splitResults (ไม่มีข้อมูลคืน null) */
 export function getAmountOwed(bill: PaymentBillLike, participantId: string): number | null {
+  // คำนวณจากรายการด้วยสูตรเดียวกับหน้ารายละเอียด ถ้าบิลไม่มีรายการ ค่อยใช้ splitResults ที่เก็บไว้
+  const fresh = shareOf(bill as Parameters<typeof shareOf>[0], participantId);
+  if (fresh !== null) return fresh;
   if (!Array.isArray(bill.splitResults)) return null;
   const row = bill.splitResults.find((sr) => sr.participant && sr.participant.id === participantId);
   return row && typeof row.amount === 'number' && Number.isFinite(row.amount) ? row.amount : null;
